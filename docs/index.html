@@ -539,18 +539,31 @@
                 }
             });
             
+            // Create custom interactions array for OpenLayers v8
+            const interactions = [];
+            
+            // Add drag pan interaction
+            interactions.push(new ol.interaction.DragPan());
+            
+            // Add mouse wheel zoom conditionally for desktop
+            if (!isMobile) {
+                interactions.push(new ol.interaction.MouseWheelZoom());
+            }
+            
+            // Add pinch zoom conditionally for mobile
+            if (isMobile) {
+                interactions.push(new ol.interaction.PinchZoom());
+            }
+            
+            // Add drag rotate (but not double-click zoom as it was disabled)
+            interactions.push(new ol.interaction.DragRotate());
+            
             // Create map
             map = new ol.Map({
                 target: 'map',
                 layers: [satelliteLayer, vectorLayer],
                 view: view,
-                interactions: ol.interaction.defaults({
-                    doubleClickZoom: false,
-                    keyboard: false,
-                    mouseWheelZoom: !isMobile,
-                    pinchZoom: isMobile,
-                    dragPan: true
-                }),
+                interactions: interactions,
                 controls: [] // Remove default controls
             });
             

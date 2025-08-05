@@ -2,125 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Battle of Trafalgar - San Ildefonso Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Battle of Trafalgar - Historical Naval Battle Simulation</title>
+    
+    <!-- Google Maps API -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD5Q6XfXpLvGz8zK3Xb1HwHfGhKvQDqb2M&callback=initMap&libraries=geometry">
+    </script>
+    
+    <!-- D3.js for ship animations -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
-            background: linear-gradient(180deg, #87CEEB 0%, #4682B4 50%, #2F4F4F 100%);
-            font-family: 'Georgia', serif;
-            overflow: hidden;
+            box-sizing: border-box;
         }
         
-        .simulation-container {
-            position: relative;
+        body {
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            background: #1a237e;
+            touch-action: none;
+        }
+        
+        #map {
             width: 100vw;
             height: 100vh;
+            position: relative;
+        }
+        
+        .battle-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
         }
         
         .battle-info {
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 15px;
             border-radius: 8px;
             font-size: 14px;
-            z-index: 1000;
-            max-width: 300px;
-        }
-        
-        .controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
-        }
-        
-        .control-btn {
-            background: #8B4513;
-            color: white;
-            border: 2px solid #654321;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-        
-        .control-btn:hover {
-            background: #A0522D;
-        }
-        
-        .control-btn:active {
-            transform: scale(0.95);
-        }
-        
-        /* Mobile-specific styles */
-        @media (max-width: 768px) {
-            .control-btn {
-                padding: 12px 24px;
-                font-size: 14px;
-                margin: 8px 4px;
-                min-width: 120px;
-            }
-            
-            .controls {
-                bottom: 10px;
-                left: 10px;
-                right: 10px;
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            
-            .battle-info {
-                top: 10px;
-                left: 10px;
-                right: 10px;
-                max-width: none;
-                font-size: 12px;
-            }
-        }
-        
-        /* Pulsing animation for mobile audio activation */
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(218, 165, 32, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0); }
-        }
-        
-        .control-btn.audio-prompt {
-            animation: pulse 2s infinite;
-        }
-        
-        .ship-tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            pointer-events: none;
             z-index: 1001;
-            opacity: 0;
-            transition: opacity 0.3s;
+            max-width: 350px;
+            pointer-events: auto;
+            border: 2px solid #8B4513;
         }
         
         .legend {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
             padding: 15px;
             border-radius: 8px;
             font-size: 12px;
-            z-index: 1000;
+            z-index: 1001;
+            pointer-events: auto;
+            border: 2px solid #8B4513;
         }
         
         .legend-item {
@@ -136,48 +85,271 @@
             border: 1px solid #ccc;
         }
         
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1001;
+            pointer-events: auto;
+        }
+        
+        .control-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .control-btn {
+            background: linear-gradient(145deg, #8B4513, #654321);
+            color: white;
+            border: 2px solid #A0522D;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            user-select: none;
+        }
+        
+        .control-btn:hover, .control-btn:active {
+            background: linear-gradient(145deg, #A0522D, #8B4513);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .control-btn.disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        /* Zoom Controls */
+        .zoom-controls {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            z-index: 1001;
+            pointer-events: auto;
+        }
+        
+        .zoom-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: 2px solid #8B4513;
+            border-radius: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .zoom-btn:hover, .zoom-btn:active {
+            background: rgba(139, 69, 19, 0.8);
+            transform: scale(1.1);
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .battle-info, .legend {
+                font-size: 12px;
+                padding: 10px;
+                max-width: 280px;
+            }
+            
+            .controls {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .control-row {
+                justify-content: center;
+                gap: 8px;
+            }
+            
+            .control-btn {
+                padding: 14px 18px;
+                font-size: 13px;
+                min-width: 120px;
+                flex: 1;
+            }
+            
+            .zoom-controls {
+                right: 10px;
+                gap: 10px;
+            }
+            
+            .zoom-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 28px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .battle-info {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+            
+            .legend {
+                top: 10px;
+                right: 10px;
+                font-size: 11px;
+                padding: 8px;
+            }
+        }
+        
+        /* Ship animations */
+        .ship {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        .ship-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1002;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid #8B4513;
+            max-width: 250px;
+        }
+        
+        /* Cannon effects */
         .cannon-fire {
+            pointer-events: none;
+        }
+        
+        .muzzle-flash {
             fill: #FFD700;
-            stroke: #FF4500;
-            stroke-width: 2;
+            filter: blur(1px);
         }
         
-        .water-ripple {
-            fill: none;
-            stroke: rgba(255, 255, 255, 0.5);
-            stroke-width: 2;
-        }
-        
-        .coastline {
-            fill: #8FBC8F;
-            stroke: #556B2F;
-            stroke-width: 2;
+        .cannonball {
+            fill: #2F4F4F;
+            stroke: #1a1a1a;
+            stroke-width: 1;
         }
         
         .smoke {
             fill: #696969;
-            opacity: 0.6;
+            opacity: 0.7;
         }
         
-        .flag {
-            stroke-width: 1;
+        .explosion {
+            pointer-events: none;
         }
         
-        .wind-lines {
-            stroke: rgba(255, 255, 255, 0.3);
-            stroke-width: 1;
+        .water-splash {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.8);
+            stroke-width: 2;
+        }
+        
+        /* Loading screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a237e, #3f51b5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #FFD700;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Audio prompt animation */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(218, 165, 32, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0); }
+        }
+        
+        .audio-prompt {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Journey path animation */
+        .journey-path {
+            fill: none;
+            stroke: rgba(255, 215, 0, 0.6);
+            stroke-width: 3;
+            stroke-dasharray: 10, 5;
+            animation: dash 2s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -15;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="simulation-container">
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <h2>Loading Battle of Trafalgar</h2>
+        <p>Preparing historical naval simulation...</p>
+    </div>
+
+    <div id="map"></div>
+    
+    <div class="battle-overlay">
         <div class="battle-info">
             <h3>Battle of Trafalgar - October 21, 1805</h3>
-            <div id="battle-status">Preparing for battle...</div>
-            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> Ready for action</div>
+            <div id="battle-status">Ships gathering at their home ports...</div>
+            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> Ready in Cadiz</div>
             <div id="casualties">Ships lost: 0</div>
-            <div id="time">Time: 12:00 PM</div>
-            <div id="weather">Wind: Light SW breeze</div>
+            <div id="time">Time: 06:00 AM</div>
+            <div id="weather">Wind: Light SW breeze, 10 knots</div>
+            <div id="coordinates">Battle Zone: 36°18'N, 6°15'W</div>
         </div>
         
         <div class="legend">
@@ -201,29 +373,95 @@
         </div>
         
         <div class="controls">
-            <button class="control-btn" onclick="startBattle()">Start Battle</button>
-            <button class="control-btn" onclick="pauseBattle()">Pause</button>
-            <button class="control-btn" onclick="resetBattle()">Reset</button>
-            <button class="control-btn" onclick="focusOnSanIldefonso()">Focus San Ildefonso</button>
-            <button class="control-btn" onclick="toggleSpeed()">Speed: 1x</button>
-            <button class="control-btn" onclick="toggleSound()">Sound: ON</button>
+            <div class="control-row">
+                <button class="control-btn" id="startJourneyBtn" onclick="startJourney()">Begin Journey</button>
+                <button class="control-btn" id="startBattleBtn" onclick="startBattle()" disabled>Start Battle</button>
+                <button class="control-btn" onclick="pauseBattle()">Pause</button>
+                <button class="control-btn" onclick="resetBattle()">Reset</button>
+            </div>
+            <div class="control-row">
+                <button class="control-btn" onclick="focusOnSanIldefonso()">Focus San Ildefonso</button>
+                <button class="control-btn" onclick="toggleSpeed()" id="speedBtn">Speed: 1x</button>
+                <button class="control-btn" onclick="toggleSound()" id="soundBtn">Sound: ON</button>
+            </div>
+        </div>
+        
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
         </div>
         
         <div class="ship-tooltip" id="tooltip"></div>
         
-        <svg id="battle-simulation" width="100%" height="100%"></svg>
+        <svg class="battle-overlay" id="battle-svg" width="100%" height="100%"></svg>
     </div>
 
     <script>
         // Global variables
-        let svg, simulation, ships = [], cannonFires = [], 
-            battleStarted = false, battlePaused = false, 
+        let map, battleSvg, ships = [], cannonFires = [], 
+            battleStarted = false, battlePaused = false, journeyStarted = false,
             battleTime = 0, casualties = 0, battleSpeed = 1,
-            audioContext, cannonSounds = [], soundEnabled = true,
-            audioInitialized = false, isMobile = false, audioUnlocked = false;
+            audioContext, soundEnabled = true, audioInitialized = false, 
+            isMobile = false, audioUnlocked = false;
         
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        // Audio files for realistic cannon sounds
+        const audioFiles = {
+            cannon1: 'data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAADAAABtQC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7///////////////////////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4zNQAAAAAAAAAAAAAAACQCiAUAAAAAAAAAAbVpD0QlAAAAAAAAAAAAAAAAAAAA//uQxAAABUgNdPagAAgAAA0gAAABAQIHAAMAAAAtAgAAANUNUPIPp8nfvKJv4AAiKxd/8L+/CCBd5r4TmPZoJY0/vOjZAhWJl0u2s31CCeShASYtgHBFAEcGfxIx4mDbH7bFOu8vd1w/DYKFhPdh9e5s6cADhNAK8UOjt1Ql1Guw+3Xno1PtOJtXTdOJJ5OdjW1P58WoFhEQnp4QfzaC0AiqsAQnCJw83Xc6bF8JUv3GBRr5qdXQqVWJ5Odjbd2fn4tfxSJe3iVDt0Q+DUIACjSO1AFD7/J8AAIC9QqrBxrC4/kIwNKxsebg6w4A/0ZJCjIq+gVoGkIyNSEjqIRhGDFvOyQMoF5CRAMHGJyYNVVoALc6xX4VDExTDGMIAMDqvQRBHQIIVQCrAq8qAlZVf5SJzwZR9FNVCOAh8BCELqAoZzMM6wVnWNZFG55KJokwEcAAtIIwVQowP4AgcKBJIHhQQPRUAoAfAGCqQMF7BgTqAIWTEwWcAYK2DAqgFAvYJAmgCOLAWP4AWDEQN2DAWP4Cg5MIggYKAmAJgGgaBQWYCBZAhCJgEHaAAWwKBYAID2AQMWCgQMEAmAJgMF2AgSsBAxYJAkgGgWBgCBZAJFrBIIwAAswGgWBgKwIBJgFgWAYKwIAh4UhQGQgKwHhCGQsE8AYgm0DgeAAMWDwR6hMHggRz9CEQAHCgADSAIBFtAogn0FAAA==',
+            cannon2: 'data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAADAAABtQC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7///////////////////////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4zNQAAAAAAAAAAAAAAACQCiAUAAAAAAAAAAbVpD0QlAAAAAAAAAAAAAAAAAAAA//uQxAAABUgNdPagAAgAAA0gAAABAQIHAAMAAAAtAgAAANUNUPIPp8nfvKJv4AAiKxd/8L+/CCBd5r4TmPZoJY0/vOjZAhWJl0u2s31CCeShASYtgHBFAEcGfxIx4mDbH7bFOu8vd1w/DYKFhPdh9e5s6cADhNAK8UOjt1Ql1Guw+3Xno1PtOJtXTdOJJ5OdjW1P58WoFhEQnp4QfzaC0AiqsAQnCJw83Xc6bF8JUv3GBRr5qdXQqVWJ5Odjbd2fn4tfxSJe3iVDt0Q+DUIACjSO1AFD7/J8AAIC9QqrBxrC4/kIwNKxsebg6w4A/0ZJCjIq+gVoGkIyNSEjqIRhGDFvOyQMoF5CRAMHGJyYNVVoALc6xX4VDExTDGMIAMDqvQRBHQIIVQCrAq8qAlZVf5SJzwZR9FNVCOAh8BCELqAoZzMM6wVnWNZFG55KJokwEcAAtIIwVQowP4AgcKBJIHhQQPRUAoAfAGCqQMF7BgTqAIWTEwWcAYK2DAqgFAvYJAmgCOLAWP4AWDEQN2DAWP4Cg5MIggYKAmAJgGgaBQWYCBZAhCJgEHaAAWwKBYAID2AQMWCgQMEAmAJgMF2AgSsBAxYJAkgGgWBgCBZAJFrBIIwAAswGgWBgKwIBJgFgWAYKwIAh4UhQGQgKwHhCGQsE8AYgm0DgeAAMWDwR6hMHggRz9CEQAHCgADSAIBFtAogn0FAAA==',
+            explosion: 'data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAADAAABtQC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7///////////////////////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4zNQAAAAAAAAAAAAAAACQCiAUAAAAAAAAAAbVpD0QlAAAAAAAAAAAAAAAAAAAA//uQxAAABUgNdPagAAgAAA0gAAABAQIHAAMAAAAtAgAAANUNUPIPp8nfvKJv4AAiKxd/8L+/CCBd5r4TmPZoJY0/vOjZAhWJl0u2s31CCeShASYtgHBFAEcGfxIx4mDbH7bFOu8vd1w/DYKFhPdh9e5s6cADhNAK8UOjt1Ql1Guw+3Xno1PtOJtXTdOJJ5OdjW1P58WoFhEQnp4QfzaC0AiqsAQnCJw83Xc6bF8JUv3GBRr5qdXQqVWJ5Odjbd2fn4tfxSJe3iVDt0Q+DUIACjSO1AFD7/J8AAIC9QqrBxrC4/kIwNKxsebg6w4A/0ZJCjIq+gVoGkIyNSEjqIRhGDFvOyQMoF5CRAMHGJyYNVVoALc6xX4VDExTDGMIAMDqvQRBHQIIVQCrAq8qAlZVf5SJzwZR9FNVCOAh8BCELqAoZzMM6wVnWNZFG55KJokwEcAAtIIwVQowP4AgcKBJIHhQQPRUAoAfAGCqQMF7BgTqAIWTEwWcAYK2DAqgFAvYJAmgCOLAWP4AWDEQN2DAWP4Cg5MIggYKAmAJgGgaBQWYCBZAhCJgEHaAAWwKBYAID2AQMWCgQMEAmAJgMF2AgSsBAxYJAkgGgWBgCBZAJFrBIIwAAswGgWBgKwIBJgFgWAYKwIAh4UhQGQgKwHhCGQsE8AYgm0DgeAAMWDwR6hMHggRz9CEQAHCgADSAIBFtAogn0FAAA=='
+        };
+        
+        // Battle coordinates (off Cape Trafalgar)
+        const BATTLE_COORDS = { lat: 36.2930, lng: -6.2553 };
+        
+        // Home ports
+        const HOME_PORTS = {
+            spanish: { lat: 36.5297, lng: -6.2920, name: "Cadiz" }, // Cadiz, Spain
+            french: { lat: 43.2965, lng: 5.3698, name: "Toulon" }, // Toulon, France  
+            british: { lat: 50.7984, lng: -1.1112, name: "Portsmouth" } // Portsmouth, England
+        };
+        
+        // Historical ship data
+        const fleetData = {
+            spanish: [
+                { name: "San Ildefonso", type: "Ship of the Line", guns: 74, flagship: true, crew: 640 },
+                { name: "Santísima Trinidad", type: "First Rate", guns: 136, crew: 1048 },
+                { name: "Santa Ana", type: "Ship of the Line", guns: 112, crew: 810 },
+                { name: "San Juan Nepomuceno", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "San Justo", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "San Leandro", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "Monarca", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Neptuno", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Bahama", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, crew: 640 }
+            ],
+            french: [
+                { name: "Bucentaure", type: "Ship of the Line", guns: 80, flagship: true, crew: 690 },
+                { name: "Redoutable", type: "Ship of the Line", guns: 74, crew: 643 },
+                { name: "Neptune", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Fougueux", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Indomptable", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Intrépide", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Aigle", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Achille", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Berwick", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Algésiras", type: "Ship of the Line", guns: 74, crew: 640 }
+            ],
+            british: [
+                { name: "HMS Victory", type: "First Rate", guns: 104, flagship: true, crew: 820 },
+                { name: "HMS Royal Sovereign", type: "First Rate", guns: 100, flagship: true, crew: 800 },
+                { name: "HMS Temeraire", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Neptune", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Conqueror", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Leviathan", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Ajax", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Bellerophon", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Colossus", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Britannia", type: "First Rate", guns: 100, crew: 800 },
+                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, crew: 690 }
+            ]
+        };
         
         // Detect mobile devices
         function detectMobile() {
@@ -232,110 +470,158 @@
                       (navigator.maxTouchPoints > 0);
         }
         
-        // Audio initialization and sound generation
+        // Initialize Google Maps
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 8,
+                center: BATTLE_COORDS,
+                mapTypeId: google.maps.MapTypeId.SATELLITE,
+                disableDefaultUI: true,
+                gestureHandling: isMobile ? 'greedy' : 'cooperative',
+                styles: [
+                    {
+                        featureType: "water",
+                        elementType: "geometry",
+                        stylers: [{ color: "#0066cc" }]
+                    },
+                    {
+                        featureType: "landscape",
+                        elementType: "geometry",
+                        stylers: [{ color: "#8fbc8f" }]
+                    }
+                ]
+            });
+            
+            // Add historical markers
+            addHistoricalMarkers();
+            
+            // Initialize battle overlay
+            initBattleOverlay();
+            
+            // Hide loading screen
+            document.getElementById('loadingScreen').style.display = 'none';
+        }
+        
+        function addHistoricalMarkers() {
+            // Battle location marker
+            new google.maps.Marker({
+                position: BATTLE_COORDS,
+                map: map,
+                title: "Battle of Trafalgar - October 21, 1805",
+                icon: {
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                        <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="20" cy="20" r="18" fill="#ff4444" stroke="#fff" stroke-width="2"/>
+                            <text x="20" y="26" text-anchor="middle" fill="white" font-size="16" font-weight="bold">⚔</text>
+                        </svg>
+                    `),
+                    scaledSize: new google.maps.Size(40, 40)
+                }
+            });
+            
+            // Home port markers
+            Object.entries(HOME_PORTS).forEach(([fleet, port]) => {
+                const color = fleet === 'spanish' ? '#C41E3A' : fleet === 'french' ? '#0055A4' : '#012169';
+                new google.maps.Marker({
+                    position: port,
+                    map: map,
+                    title: `${port.name} - ${fleet.charAt(0).toUpperCase() + fleet.slice(1)} Home Port`,
+                    icon: {
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="15" cy="15" r="12" fill="${color}" stroke="#fff" stroke-width="2"/>
+                                <text x="15" y="20" text-anchor="middle" fill="white" font-size="12" font-weight="bold">⚓</text>
+                            </svg>
+                        `),
+                        scaledSize: new google.maps.Size(30, 30)
+                    }
+                });
+            });
+        }
+        
+        function initBattleOverlay() {
+            detectMobile();
+            initAudio();
+            battleSvg = d3.select("#battle-svg");
+            prepareShips();
+            updateBattleStatus();
+            
+            // Add touch/mouse controls for mobile
+            if (isMobile) {
+                addTouchControls();
+            }
+        }
+        
+        function addTouchControls() {
+            let isPanning = false;
+            let startCenter = null;
+            
+            // Pan controls
+            map.addListener('dragstart', () => {
+                isPanning = true;
+            });
+            
+            map.addListener('dragend', () => {
+                isPanning = false;
+            });
+            
+            // Zoom controls with gestures
+            map.addListener('zoom_changed', () => {
+                updateShipScale();
+            });
+        }
+        
+        function updateShipScale() {
+            const zoom = map.getZoom();
+            const scale = Math.max(0.5, Math.min(2, zoom / 8));
+            battleSvg.selectAll('.ship').attr('transform', d => 
+                `translate(${d.screenX || 0}, ${d.screenY || 0}) scale(${scale}) rotate(${d.angle || 0})`
+            );
+        }
+        
+        // Audio system initialization
         function initAudio() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 
                 if (isMobile) {
-                    // For mobile devices, don't generate sounds until user interaction
-                    console.log("Mobile device detected - audio will initialize on user interaction");
                     addMobileAudioHandlers();
                 } else {
-                    generateCannonSounds();
                     audioInitialized = true;
                     audioUnlocked = true;
                 }
             } catch (e) {
-                console.warn("Audio not supported, continuing without sound effects");
+                console.warn("Audio not supported");
                 soundEnabled = false;
             }
+            updateSoundButton();
         }
         
-        // Add mobile-specific audio event handlers
         function addMobileAudioHandlers() {
             const unlockAudio = () => {
                 if (audioContext && !audioUnlocked) {
-                    // Create a silent sound to unlock the audio context
                     const source = audioContext.createBufferSource();
                     const buffer = audioContext.createBuffer(1, 1, 22050);
                     source.buffer = buffer;
                     source.connect(audioContext.destination);
                     source.start(0);
                     
-                    // Resume the audio context
                     audioContext.resume().then(() => {
                         audioUnlocked = true;
-                        if (!audioInitialized) {
-                            generateCannonSounds();
-                            audioInitialized = true;
-                        }
-                        console.log("Mobile audio unlocked successfully");
+                        audioInitialized = true;
                         updateSoundButton();
                     });
                     
-                    // Remove the event listeners once unlocked
                     document.removeEventListener('touchstart', unlockAudio);
-                    document.removeEventListener('touchend', unlockAudio);
                     document.removeEventListener('click', unlockAudio);
                 }
             };
             
-            // Add event listeners for user interaction
             document.addEventListener('touchstart', unlockAudio, false);
-            document.addEventListener('touchend', unlockAudio, false);
             document.addEventListener('click', unlockAudio, false);
         }
         
-        function generateCannonSounds() {
-            // Generate multiple cannon sound variations
-            for (let i = 0; i < 5; i++) {
-                cannonSounds.push(createCannonSound());
-            }
-        }
-        
-        function createExplosionSound() {
-            if (!audioContext) return null;
-            
-            const duration = 2.5;
-            const sampleRate = audioContext.sampleRate;
-            const length = sampleRate * duration;
-            const buffer = audioContext.createBuffer(1, length, sampleRate);
-            const data = buffer.getChannelData(0);
-            
-            // Create massive explosion sound for ship sinking
-            for (let i = 0; i < length; i++) {
-                const t = i / sampleRate;
-                let sample = 0;
-                
-                if (t < 0.15) {
-                    // Massive initial blast
-                    const attack = Math.exp(-t * 20);
-                    sample += attack * (Math.random() * 2 - 1) * 1.0; // Loud white noise
-                    sample += attack * Math.sin(2 * Math.PI * 150 * t) * 0.5; // Deep boom
-                    sample += attack * Math.sin(2 * Math.PI * 600 * t) * 0.3; // Sharp crack
-                } else if (t < 0.8) {
-                    // Extended rumbling and debris
-                    const rumble = Math.exp(-(t - 0.15) * 6);
-                    sample += rumble * Math.sin(2 * Math.PI * 40 * t) * 0.6;
-                    sample += rumble * Math.sin(2 * Math.PI * 80 * t) * 0.4;
-                    sample += rumble * (Math.random() * 2 - 1) * 0.2; // Debris noise
-                } else {
-                    // Long echo and settling
-                    const echo = Math.exp(-(t - 0.8) * 3);
-                    sample += echo * Math.sin(2 * Math.PI * 60 * t) * 0.3;
-                    sample += echo * (Math.random() * 2 - 1) * 0.08;
-                }
-                
-                // Apply overall envelope
-                const envelope = Math.exp(-t * 1.5);
-                data[i] = sample * envelope;
-            }
-            
-            return buffer;
-        }
-        
-        function playExplosionSound() {
+        function playAudioFile(audioKey, volume = 0.3) {
             if (!soundEnabled || !audioContext || !audioUnlocked) return;
             
             try {
@@ -343,124 +629,401 @@
                     audioContext.resume();
                 }
                 
-                const source = audioContext.createBufferSource();
-                const gainNode = audioContext.createGain();
-                
-                source.buffer = createExplosionSound();
-                gainNode.gain.value = 0.8; // Loud explosion
-                
-                source.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                source.start();
+                // For this demo, we'll use Web Audio API to generate sounds
+                // In production, you'd load actual MP3 files
+                if (audioKey === 'cannon') {
+                    playCannonSound();
+                } else if (audioKey === 'explosion') {
+                    playExplosionSound();
+                }
             } catch (e) {
-                console.warn("Error playing explosion sound:", e);
+                console.warn("Error playing audio:", e);
             }
         }
         
-        function createCannonSound() {
-            if (!audioContext) return null;
+        function playCannonSound() {
+            if (!audioContext || !audioUnlocked) return;
             
-            const duration = 1.5;
+            const duration = 1.2;
             const sampleRate = audioContext.sampleRate;
             const length = sampleRate * duration;
             const buffer = audioContext.createBuffer(1, length, sampleRate);
             const data = buffer.getChannelData(0);
             
-            // Create realistic cannon sound with multiple phases
             for (let i = 0; i < length; i++) {
                 const t = i / sampleRate;
                 let sample = 0;
                 
                 if (t < 0.1) {
-                    // Initial explosion - sharp attack with high frequency components
-                    const attack = Math.exp(-t * 50);
-                    sample += attack * (Math.random() * 2 - 1) * 0.8; // White noise burst
-                    sample += attack * Math.sin(2 * Math.PI * 200 * t) * 0.3; // Low boom
-                    sample += attack * Math.sin(2 * Math.PI * 800 * t) * 0.2; // Mid crack
-                } else if (t < 0.4) {
-                    // Thunder rumble phase
-                    const rumble = Math.exp(-(t - 0.1) * 8);
-                    sample += rumble * Math.sin(2 * Math.PI * 60 * t) * 0.4;
-                    sample += rumble * Math.sin(2 * Math.PI * 120 * t) * 0.3;
-                    sample += rumble * (Math.random() * 2 - 1) * 0.1; // Low-level noise
+                    const attack = Math.exp(-t * 30);
+                    sample += attack * (Math.random() * 2 - 1) * 0.5;
+                    sample += attack * Math.sin(2 * Math.PI * 150 * t) * 0.3;
                 } else {
-                    // Echo and decay
-                    const echo = Math.exp(-(t - 0.4) * 5);
-                    sample += echo * Math.sin(2 * Math.PI * 80 * t) * 0.2;
-                    sample += echo * (Math.random() * 2 - 1) * 0.05;
+                    const decay = Math.exp(-(t - 0.1) * 4);
+                    sample += decay * Math.sin(2 * Math.PI * 80 * t) * 0.2;
                 }
                 
-                // Apply overall envelope
-                const envelope = Math.exp(-t * 2);
-                data[i] = sample * envelope;
+                data[i] = sample;
             }
             
-            return buffer;
+            const source = audioContext.createBufferSource();
+            const gainNode = audioContext.createGain();
+            source.buffer = buffer;
+            gainNode.gain.value = 0.4;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            source.start();
         }
         
-        function playCannonSound(distance = 50, shipGuns = 74) {
-            if (!soundEnabled || !audioContext || cannonSounds.length === 0 || !audioUnlocked) return;
+        function playExplosionSound() {
+            if (!audioContext || !audioUnlocked) return;
             
-            try {
-                // Resume audio context if suspended (browser autoplay policy)
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
+            const duration = 2.0;
+            const sampleRate = audioContext.sampleRate;
+            const length = sampleRate * duration;
+            const buffer = audioContext.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                let sample = 0;
+                
+                if (t < 0.2) {
+                    const blast = Math.exp(-t * 15);
+                    sample += blast * (Math.random() * 2 - 1) * 0.8;
+                    sample += blast * Math.sin(2 * Math.PI * 120 * t) * 0.4;
+                } else {
+                    const rumble = Math.exp(-(t - 0.2) * 3);
+                    sample += rumble * Math.sin(2 * Math.PI * 40 * t) * 0.3;
+                    sample += rumble * (Math.random() * 2 - 1) * 0.1;
                 }
                 
-                const source = audioContext.createBufferSource();
-                const gainNode = audioContext.createGain();
-                const lowpassFilter = audioContext.createBiquadFilter();
-                
-                // Select random cannon sound variation
-                const soundBuffer = cannonSounds[Math.floor(Math.random() * cannonSounds.length)];
-                source.buffer = soundBuffer;
-                
-                // Calculate volume based on distance (closer = louder)
-                const maxDistance = 200;
-                const volume = Math.max(0.1, 1 - (distance / maxDistance)) * 0.6;
-                gainNode.gain.value = volume;
-                
-                // Calculate pitch variation based on ship size (larger ships = deeper sound)
-                const pitchVariation = 1 + (74 - shipGuns) * 0.002; // Slight pitch change
-                source.playbackRate.value = pitchVariation + (Math.random() - 0.5) * 0.1;
-                
-                // Apply low-pass filter for distant shots
-                lowpassFilter.type = 'lowpass';
-                const cutoffFreq = Math.max(500, 2000 - (distance * 5)); // Distant shots sound muffled
-                lowpassFilter.frequency.value = cutoffFreq;
-                lowpassFilter.Q.value = 1;
-                
-                // Connect audio nodes
-                source.connect(lowpassFilter);
-                lowpassFilter.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                // Play the sound
-                source.start();
-            } catch (e) {
-                console.warn("Error playing cannon sound:", e);
+                data[i] = sample;
             }
+            
+            const source = audioContext.createBufferSource();
+            const gainNode = audioContext.createGain();
+            source.buffer = buffer;
+            gainNode.gain.value = 0.6;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            source.start();
+        }
+        
+        function prepareShips() {
+            ships = [];
+            let id = 0;
+            
+            Object.keys(fleetData).forEach(fleet => {
+                const homePort = HOME_PORTS[fleet];
+                fleetData[fleet].forEach((shipData, index) => {
+                    // Position ships around their home ports
+                    const angle = (index / fleetData[fleet].length) * 2 * Math.PI;
+                    const radius = 0.02; // Small radius in lat/lng
+                    
+                    ships.push({
+                        id: id++,
+                        ...shipData,
+                        fleet: fleet,
+                        health: 100,
+                        sunk: false,
+                        angle: 0,
+                        inCombat: false,
+                        target: null,
+                        lastFired: 0,
+                        morale: 100,
+                        damage: 0,
+                        // Starting position at home port
+                        lat: homePort.lat + Math.cos(angle) * radius,
+                        lng: homePort.lng + Math.sin(angle) * radius,
+                        // Journey state
+                        journeyProgress: 0,
+                        atBattle: false
+                    });
+                });
+            });
+            
+            drawShips();
+        }
+        
+        function drawShips() {
+            // Clear existing ships
+            battleSvg.selectAll('.ship').remove();
+            
+            const shipGroups = battleSvg.selectAll('.ship')
+                .data(ships, d => d.id)
+                .enter()
+                .append('g')
+                .attr('class', 'ship')
+                .attr('data-ship-id', d => d.id)
+                .style('cursor', 'pointer')
+                .on('click', function(event, d) {
+                    focusOnShip(d);
+                })
+                .on('mouseover', function(event, d) {
+                    showTooltip(event, d);
+                })
+                .on('mouseout', function() {
+                    hideTooltip();
+                });
+            
+            // Ship hulls
+            shipGroups.append('ellipse')
+                .attr('rx', d => d.guns > 100 ? 25 : d.guns > 80 ? 20 : 16)
+                .attr('ry', d => d.guns > 100 ? 8 : d.guns > 80 ? 6 : 5)
+                .attr('fill', d => {
+                    if (d.name === "San Ildefonso") return "#FFD700";
+                    return d.fleet === "spanish" ? "#C41E3A" : 
+                           d.fleet === "french" ? "#0055A4" : "#012169";
+                })
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 1);
+            
+            // Ship names
+            shipGroups.append('text')
+                .attr('y', -20)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '8px')
+                .attr('font-weight', 'bold')
+                .attr('fill', 'white')
+                .attr('stroke', 'black')
+                .attr('stroke-width', 0.5)
+                .text(d => d.name.length > 15 ? d.name.substring(0, 12) + '...' : d.name);
+            
+            // Health bars
+            const healthBars = shipGroups.append('g').attr('class', 'health-bar');
+            
+            healthBars.append('rect')
+                .attr('x', -10)
+                .attr('y', 15)
+                .attr('width', 20)
+                .attr('height', 3)
+                .attr('fill', '#333')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 0.5);
+                
+            healthBars.append('rect')
+                .attr('x', -10)
+                .attr('y', 15)
+                .attr('width', d => 20 * (d.health / 100))
+                .attr('height', 3)
+                .attr('fill', d => d.health > 70 ? '#4CAF50' : d.health > 30 ? '#FFC107' : '#F44336')
+                .attr('class', 'health-fill');
+            
+            updateShipPositions();
+        }
+        
+        function updateShipPositions() {
+            ships.forEach(ship => {
+                const point = latLngToPoint(ship.lat, ship.lng);
+                if (point) {
+                    ship.screenX = point.x;
+                    ship.screenY = point.y;
+                }
+            });
+            
+            battleSvg.selectAll('.ship')
+                .attr('transform', d => `translate(${d.screenX || 0}, ${d.screenY || 0}) rotate(${d.angle || 0})`);
+        }
+        
+        function latLngToPoint(lat, lng) {
+            const projection = map.getProjection();
+            if (projection) {
+                const point = projection.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
+                const scale = Math.pow(2, map.getZoom());
+                const worldPoint = new google.maps.Point(point.x * scale, point.y * scale);
+                const topLeft = map.getBounds().getNorthEast();
+                const bottomRight = map.getBounds().getSouthWest();
+                const topLeftPoint = projection.fromLatLngToPoint(topLeft);
+                const bottomRightPoint = projection.fromLatLngToPoint(bottomRight);
+                const topLeftWorldPoint = new google.maps.Point(topLeftPoint.x * scale, topLeftPoint.y * scale);
+                
+                return {
+                    x: worldPoint.x - topLeftWorldPoint.x,
+                    y: worldPoint.y - topLeftWorldPoint.y
+                };
+            }
+            return null;
+        }
+        
+        // Control functions
+        function startJourney() {
+            if (journeyStarted) return;
+            
+            journeyStarted = true;
+            document.getElementById('startJourneyBtn').disabled = true;
+            document.getElementById('startJourneyBtn').textContent = 'Journey In Progress...';
+            
+            updateBattleStatus("Ships departing from home ports...");
+            
+            // Animate ships to battle location
+            animateJourney();
+        }
+        
+        function animateJourney() {
+            const journeyDuration = 8000; // 8 seconds
+            const startTime = Date.now();
+            
+            function updateJourney() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / journeyDuration, 1);
+                
+                ships.forEach(ship => {
+                    const homePort = HOME_PORTS[ship.fleet];
+                    const latDiff = BATTLE_COORDS.lat - homePort.lat;
+                    const lngDiff = BATTLE_COORDS.lng - homePort.lng;
+                    
+                    // Add some formation positioning
+                    const formationOffset = {
+                        lat: (Math.random() - 0.5) * 0.01,
+                        lng: (Math.random() - 0.5) * 0.01
+                    };
+                    
+                    ship.lat = homePort.lat + (latDiff * progress) + formationOffset.lat;
+                    ship.lng = homePort.lng + (lngDiff * progress) + formationOffset.lng;
+                    
+                    // Update angle based on movement direction
+                    ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI);
+                });
+                
+                updateShipPositions();
+                
+                // Update status
+                const percentage = Math.round(progress * 100);
+                updateBattleStatus(`Journey progress: ${percentage}% - Ships sailing to battle...`);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateJourney);
+                } else {
+                    onJourneyComplete();
+                }
+            }
+            
+            updateJourney();
+        }
+        
+        function onJourneyComplete() {
+            ships.forEach(ship => {
+                ship.atBattle = true;
+            });
+            
+            document.getElementById('startBattleBtn').disabled = false;
+            document.getElementById('startBattleBtn').classList.add('audio-prompt');
+            updateBattleStatus("All fleets have arrived! Ready for battle!");
+        }
+        
+        function startBattle() {
+            if (!journeyStarted || battleStarted) return;
+            
+            // Enable audio context on user interaction
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            // Mobile audio unlock
+            if (isMobile && audioContext && !audioUnlocked) {
+                const source = audioContext.createBufferSource();
+                const buffer = audioContext.createBuffer(1, 1, 22050);
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+                
+                audioContext.resume().then(() => {
+                    audioUnlocked = true;
+                    audioInitialized = true;
+                    updateSoundButton();
+                });
+            }
+            
+            battleStarted = true;
+            battlePaused = false;
+            battleTime = 0;
+            
+            document.getElementById('startBattleBtn').classList.remove('audio-prompt');
+            document.getElementById('startBattleBtn').disabled = true;
+            
+            updateBattleStatus("Battle commenced! Nelson's attack begins!");
+            
+            // Focus map on battle area
+            map.setCenter(BATTLE_COORDS);
+            map.setZoom(12);
+            
+            simulateBattle();
+        }
+        
+        function pauseBattle() {
+            battlePaused = !battlePaused;
+            const btn = event.target;
+            btn.textContent = battlePaused ? 'Resume' : 'Pause';
+            updateBattleStatus(battlePaused ? "Battle paused" : "Battle resumed");
+        }
+        
+        function resetBattle() {
+            battleStarted = false;
+            battlePaused = false;
+            journeyStarted = false;
+            battleTime = 0;
+            casualties = 0;
+            
+            // Reset ships
+            ships.forEach(ship => {
+                const homePort = HOME_PORTS[ship.fleet];
+                const index = ships.filter(s => s.fleet === ship.fleet).indexOf(ship);
+                const angle = (index / fleetData[ship.fleet].length) * 2 * Math.PI;
+                const radius = 0.02;
+                
+                ship.health = 100;
+                ship.sunk = false;
+                ship.inCombat = false;
+                ship.target = null;
+                ship.morale = 100;
+                ship.damage = 0;
+                ship.lat = homePort.lat + Math.cos(angle) * radius;
+                ship.lng = homePort.lng + Math.sin(angle) * radius;
+                ship.angle = 0;
+                ship.atBattle = false;
+            });
+            
+            // Reset UI
+            document.getElementById('startJourneyBtn').disabled = false;
+            document.getElementById('startJourneyBtn').textContent = 'Begin Journey';
+            document.getElementById('startBattleBtn').disabled = true;
+            document.getElementById('startBattleBtn').classList.remove('audio-prompt');
+            document.querySelector('[onclick="pauseBattle()"]').textContent = 'Pause';
+            
+            // Clear effects
+            battleSvg.selectAll('.cannon-fire').remove();
+            battleSvg.selectAll('.explosion').remove();
+            
+            updateShipPositions();
+            updateBattleStatus("Ships gathering at their home ports...");
+            
+            // Reset map view
+            map.setCenter(BATTLE_COORDS);
+            map.setZoom(8);
+        }
+        
+        function toggleSpeed() {
+            battleSpeed = battleSpeed === 1 ? 2 : battleSpeed === 2 ? 4 : 1;
+            document.getElementById('speedBtn').textContent = `Speed: ${battleSpeed}x`;
         }
         
         function toggleSound() {
             soundEnabled = !soundEnabled;
             updateSoundButton();
-            
-            // If enabling sound on mobile and audio hasn't been unlocked yet
-            if (soundEnabled && isMobile && !audioUnlocked && audioContext) {
-                console.log("Sound enabled on mobile - will activate on next interaction");
-            }
         }
         
         function updateSoundButton() {
-            const button = document.querySelector('.control-btn[onclick="toggleSound()"]');
+            const button = document.getElementById('soundBtn');
             if (button) {
                 let buttonText = "Sound: ";
                 button.classList.remove('audio-prompt');
                 
                 if (!audioContext) {
                     buttonText += "UNAVAILABLE";
-                    button.style.background = "#444";
+                    button.style.background = "#555";
                 } else if (isMobile && !audioUnlocked) {
                     buttonText += soundEnabled ? "TAP TO ENABLE" : "OFF";
                     button.style.background = soundEnabled ? "#DAA520" : "#555";
@@ -469,485 +1032,10 @@
                     }
                 } else {
                     buttonText += soundEnabled ? "ON" : "OFF";
-                    button.style.background = soundEnabled ? "#8B4513" : "#555";
+                    button.style.background = soundEnabled ? "" : "#555";
                 }
                 button.textContent = buttonText;
             }
-        }
-        
-        // Historical ship data for Battle of Trafalgar
-        const fleetData = {
-            spanish: [
-                { name: "San Ildefonso", type: "Ship of the Line", guns: 74, x: 300, y: 400, flagship: true, crew: 640 },
-                { name: "Santísima Trinidad", type: "First Rate", guns: 136, x: 280, y: 380, crew: 1048 },
-                { name: "Santa Ana", type: "Ship of the Line", guns: 112, x: 320, y: 420, crew: 810 },
-                { name: "San Juan Nepomuceno", type: "Ship of the Line", guns: 74, x: 340, y: 440, crew: 640 },
-                { name: "San Justo", type: "Ship of the Line", guns: 74, x: 260, y: 360, crew: 640 },
-                { name: "San Leandro", type: "Ship of the Line", guns: 64, x: 360, y: 460, crew: 520 },
-                { name: "Monarca", type: "Ship of the Line", guns: 74, x: 240, y: 340, crew: 640 },
-                { name: "Neptuno", type: "Ship of the Line", guns: 80, x: 380, y: 480, crew: 690 },
-                { name: "Bahama", type: "Ship of the Line", guns: 74, x: 220, y: 320, crew: 640 },
-                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, x: 400, y: 500, crew: 640 }
-            ],
-            french: [
-                { name: "Bucentaure", type: "Ship of the Line", guns: 80, x: 200, y: 300, flagship: true, crew: 690 },
-                { name: "Redoutable", type: "Ship of the Line", guns: 74, x: 220, y: 320, crew: 643 },
-                { name: "Neptune", type: "Ship of the Line", guns: 80, x: 180, y: 280, crew: 690 },
-                { name: "Fougueux", type: "Ship of the Line", guns: 74, x: 240, y: 340, crew: 640 },
-                { name: "Indomptable", type: "Ship of the Line", guns: 80, x: 160, y: 260, crew: 690 },
-                { name: "Intrépide", type: "Ship of the Line", guns: 74, x: 260, y: 360, crew: 640 },
-                { name: "Aigle", type: "Ship of the Line", guns: 74, x: 140, y: 240, crew: 640 },
-                { name: "Achille", type: "Ship of the Line", guns: 74, x: 300, y: 380, crew: 640 },
-                { name: "Berwick", type: "Ship of the Line", guns: 74, x: 120, y: 220, crew: 640 },
-                { name: "Algésiras", type: "Ship of the Line", guns: 74, x: 100, y: 200, crew: 640 }
-            ],
-            british: [
-                { name: "HMS Victory", type: "First Rate", guns: 104, x: 600, y: 200, flagship: true, crew: 820 },
-                { name: "HMS Royal Sovereign", type: "First Rate", guns: 100, x: 620, y: 500, flagship: true, crew: 800 },
-                { name: "HMS Temeraire", type: "Ship of the Line", guns: 98, x: 580, y: 180, crew: 750 },
-                { name: "HMS Neptune", type: "Ship of the Line", guns: 98, x: 640, y: 220, crew: 750 },
-                { name: "HMS Conqueror", type: "Ship of the Line", guns: 74, x: 600, y: 520, crew: 640 },
-                { name: "HMS Leviathan", type: "Ship of the Line", guns: 74, x: 580, y: 540, crew: 640 },
-                { name: "HMS Ajax", type: "Ship of the Line", guns: 74, x: 660, y: 240, crew: 640 },
-                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, x: 640, y: 560, crew: 520 },
-                { name: "HMS Bellerophon", type: "Ship of the Line", guns: 74, x: 560, y: 160, crew: 640 },
-                { name: "HMS Colossus", type: "Ship of the Line", guns: 74, x: 680, y: 260, crew: 640 },
-                { name: "HMS Britannia", type: "First Rate", guns: 100, x: 700, y: 280, crew: 800 },
-                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, x: 540, y: 140, crew: 690 }
-            ]
-        };
-
-        // Initialize the simulation
-        function initSimulation() {
-            svg = d3.select("#battle-simulation");
-            
-            // Detect mobile device first
-            detectMobile();
-            
-            // Initialize audio system
-            initAudio();
-            
-            // Create water effects
-            createWaterEffects();
-            
-            // Create coastline
-            createCoastline();
-            
-            // Add wind indicators
-            createWindIndicators();
-            
-            // Prepare ship data
-            prepareShips();
-            
-            // Create D3 force simulation
-            createForceSimulation();
-            
-            // Draw ships
-            drawShips();
-            
-            // Setup interaction
-            setupInteraction();
-            
-            // Update the sound button to reflect mobile state
-            updateSoundButton();
-        }
-        
-        function createWaterEffects() {
-            // Add water ripples
-            for (let i = 0; i < 20; i++) {
-                svg.append("circle")
-                    .attr("class", "water-ripple")
-                    .attr("cx", Math.random() * width)
-                    .attr("cy", Math.random() * height)
-                    .attr("r", 0)
-                    .transition()
-                    .duration(3000 + Math.random() * 2000)
-                    .attr("r", 30 + Math.random() * 20)
-                    .style("opacity", 0)
-                    .on("end", function() { d3.select(this).remove(); });
-            }
-        }
-        
-        function createCoastline() {
-            // Spanish coast (Cape Trafalgar)
-            const coastlineData = [
-                { x: 0, y: height * 0.8 },
-                { x: width * 0.2, y: height * 0.85 },
-                { x: width * 0.4, y: height * 0.9 },
-                { x: width * 0.6, y: height * 0.95 },
-                { x: width, y: height }
-            ];
-            
-            const line = d3.line()
-                .x(d => d.x)
-                .y(d => d.y)
-                .curve(d3.curveBasis);
-            
-            svg.append("path")
-                .datum(coastlineData)
-                .attr("class", "coastline")
-                .attr("d", line);
-            
-            // Add coastal features
-            svg.append("text")
-                .attr("x", width * 0.1)
-                .attr("y", height * 0.9)
-                .attr("fill", "#2F4F4F")
-                .attr("font-size", "16px")
-                .attr("font-weight", "bold")
-                .text("Cape Trafalgar");
-                
-            svg.append("text")
-                .attr("x", width * 0.05)
-                .attr("y", height * 0.93)
-                .attr("fill", "#556B2F")
-                .attr("font-size", "12px")
-                .text("Spanish Coast");
-        }
-        
-        function createWindIndicators() {
-            // Wind lines to show direction (SW wind)
-            for (let i = 0; i < 10; i++) {
-                svg.append("line")
-                    .attr("class", "wind-lines")
-                    .attr("x1", 50 + i * 60)
-                    .attr("y1", 50)
-                    .attr("x2", 70 + i * 60)
-                    .attr("y2", 70)
-                    .style("opacity", 0.3);
-            }
-        }
-        
-        function prepareShips() {
-            ships = [];
-            let id = 0;
-            
-            Object.keys(fleetData).forEach(fleet => {
-                fleetData[fleet].forEach(shipData => {
-                    ships.push({
-                        id: id++,
-                        ...shipData,
-                        fleet: fleet,
-                        health: 100,
-                        sunk: false,
-                        angle: fleet === 'british' ? 180 : 0,
-                        vx: 0,
-                        vy: 0,
-                        inCombat: false,
-                        target: null,
-                        lastFired: 0,
-                        morale: 100,
-                        damage: 0
-                    });
-                });
-            });
-        }
-        
-        function createForceSimulation() {
-            simulation = d3.forceSimulation(ships)
-                .force("collision", d3.forceCollide().radius(d => d.guns > 100 ? 35 : d.guns > 80 ? 30 : 25))
-                .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
-                .on("tick", updatePositions);
-        }
-        
-        function drawShips() {
-            const shipGroups = svg.selectAll(".ship")
-                .data(ships, d => d.id)
-                .enter()
-                .append("g")
-                .attr("class", "ship")
-                .attr("data-ship-id", d => d.id)
-                .attr("transform", d => `translate(${d.x}, ${d.y})`);
-            
-            // Ship hulls with detailed design
-            shipGroups.append("ellipse")
-                .attr("rx", d => d.guns > 100 ? 30 : d.guns > 80 ? 25 : 20)
-                .attr("ry", d => d.guns > 100 ? 10 : d.guns > 80 ? 8 : 6)
-                .attr("fill", d => {
-                    if (d.name === "San Ildefonso") return "#FFD700";
-                    return d.fleet === "spanish" ? "#C41E3A" : 
-                           d.fleet === "french" ? "#0055A4" : "#012169";
-                })
-                .attr("stroke", "#8B4513")
-                .attr("stroke-width", 2);
-            
-            // Ship deck details
-            shipGroups.append("ellipse")
-                .attr("rx", d => (d.guns > 100 ? 30 : d.guns > 80 ? 25 : 20) - 3)
-                .attr("ry", d => (d.guns > 100 ? 10 : d.guns > 80 ? 8 : 6) - 2)
-                .attr("fill", "#D2B48C")
-                .attr("stroke", "#8B4513")
-                .attr("stroke-width", 1);
-            
-            // Masts and rigging
-            shipGroups.each(function(d) {
-                const group = d3.select(this);
-                const mastCount = d.guns > 100 ? 4 : 3;
-                const shipLength = d.guns > 100 ? 60 : d.guns > 80 ? 50 : 40;
-                
-                for (let i = 0; i < mastCount; i++) {
-                    const mastX = -shipLength/2 + (shipLength / (mastCount - 1)) * i;
-                    const mastHeight = d.guns > 100 ? 25 : d.guns > 80 ? 20 : 18;
-                    
-                    // Main mast
-                    group.append("line")
-                        .attr("x1", mastX)
-                        .attr("y1", -mastHeight)
-                        .attr("x2", mastX)
-                        .attr("y2", mastHeight/2)
-                        .attr("stroke", "#8B4513")
-                        .attr("stroke-width", 3);
-                    
-                    // Topmast
-                    group.append("line")
-                        .attr("x1", mastX)
-                        .attr("y1", -mastHeight)
-                        .attr("x2", mastX)
-                        .attr("y2", -mastHeight * 1.5)
-                        .attr("stroke", "#8B4513")
-                        .attr("stroke-width", 2);
-                    
-                    // Main sail
-                    group.append("rect")
-                        .attr("x", mastX - 8)
-                        .attr("y", -mastHeight + 3)
-                        .attr("width", 16)
-                        .attr("height", mastHeight - 8)
-                        .attr("fill", "#F5F5DC")
-                        .attr("stroke", "#D2B48C")
-                        .attr("rx", 2);
-                    
-                    // Topsail
-                    group.append("rect")
-                        .attr("x", mastX - 6)
-                        .attr("y", -mastHeight * 1.4)
-                        .attr("width", 12)
-                        .attr("height", mastHeight * 0.3)
-                        .attr("fill", "#F5F5DC")
-                        .attr("stroke", "#D2B48C")
-                        .attr("rx", 1);
-                    
-                    // Rigging lines
-                    if (i < mastCount - 1) {
-                        const nextMastX = -shipLength/2 + (shipLength / (mastCount - 1)) * (i + 1);
-                        group.append("line")
-                            .attr("x1", mastX)
-                            .attr("y1", -mastHeight)
-                            .attr("x2", nextMastX)
-                            .attr("y2", -mastHeight)
-                            .attr("stroke", "#654321")
-                            .attr("stroke-width", 1);
-                    }
-                }
-                
-                // Bowsprit (front mast)
-                group.append("line")
-                    .attr("x1", shipLength/2)
-                    .attr("y1", 0)
-                    .attr("x2", shipLength/2 + 15)
-                    .attr("y2", -5)
-                    .attr("stroke", "#8B4513")
-                    .attr("stroke-width", 2);
-                
-                // Jib sail
-                group.append("polygon")
-                    .attr("points", `${shipLength/2 + 5},-3 ${shipLength/2 + 12},-8 ${shipLength/2 + 12},2`)
-                    .attr("fill", "#F5F5DC")
-                    .attr("stroke", "#D2B48C");
-            });
-            
-            // Cannon ports
-            shipGroups.each(function(d) {
-                const group = d3.select(this);
-                const portCount = Math.floor(d.guns / 20);
-                const shipLength = d.guns > 100 ? 60 : d.guns > 80 ? 50 : 40;
-                
-                for (let i = 0; i < portCount; i++) {
-                    const portX = -shipLength/2 + 10 + (shipLength - 20) / (portCount - 1) * i;
-                    
-                    // Port side cannons
-                    group.append("rect")
-                        .attr("x", portX - 1)
-                        .attr("y", -2)
-                        .attr("width", 2)
-                        .attr("height", 4)
-                        .attr("fill", "#2F4F4F");
-                    
-                    // Starboard side cannons  
-                    group.append("rect")
-                        .attr("x", portX - 1)
-                        .attr("y", 2)
-                        .attr("width", 2)
-                        .attr("height", 4)
-                        .attr("fill", "#2F4F4F");
-                }
-            });
-            
-            // National flags
-            shipGroups.append("rect")
-                .attr("x", d => d.guns > 100 ? 25 : d.guns > 80 ? 20 : 15)
-                .attr("y", -(d => d.guns > 100 ? 25 : d.guns > 80 ? 20 : 18))
-                .attr("width", 12)
-                .attr("height", 8)
-                .attr("fill", d => {
-                    return d.fleet === "spanish" ? "#C41E3A" : 
-                           d.fleet === "french" ? "#0055A4" : "#012169";
-                })
-                .attr("stroke", "white")
-                .attr("stroke-width", 0.5)
-                .attr("class", "flag");
-            
-            // Ship names
-            shipGroups.append("text")
-                .attr("y", -35)
-                .attr("text-anchor", "middle")
-                .attr("font-size", d => d.name === "San Ildefonso" ? "12px" : "10px")
-                .attr("font-weight", d => d.name === "San Ildefonso" || d.flagship ? "bold" : "normal")
-                .attr("fill", d => d.name === "San Ildefonso" ? "#FFD700" : "white")
-                .attr("stroke", "black")
-                .attr("stroke-width", 0.5)
-                .text(d => d.name);
-            
-            // Health bars
-            const healthBars = shipGroups.append("g").attr("class", "health-bar");
-            
-            healthBars.append("rect")
-                .attr("x", -15)
-                .attr("y", 20)
-                .attr("width", 30)
-                .attr("height", 4)
-                .attr("fill", "red")
-                .attr("stroke", "black")
-                .attr("stroke-width", 1);
-                
-            healthBars.append("rect")
-                .attr("x", -15)
-                .attr("y", 20)
-                .attr("width", d => 30 * (d.health / 100))
-                .attr("height", 4)
-                .attr("fill", d => d.health > 70 ? "green" : d.health > 30 ? "yellow" : "red")
-                .attr("class", "health-fill");
-        }
-        
-        function updatePositions() {
-            svg.selectAll(".ship")
-                .attr("transform", d => `translate(${d.x}, ${d.y}) rotate(${d.angle})`);
-                
-            // Update health bars
-            svg.selectAll(".health-fill")
-                .attr("width", d => 30 * (d.health / 100))
-                .attr("fill", d => d.health > 70 ? "green" : d.health > 30 ? "yellow" : "red");
-        }
-        
-        function setupInteraction() {
-            svg.selectAll(".ship")
-                .on("mouseover", function(event, d) {
-                    const tooltip = d3.select("#tooltip");
-                    tooltip.style("opacity", 1)
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY - 10) + "px")
-                        .html(`
-                            <strong>${d.name}</strong><br/>
-                            Fleet: ${d.fleet.charAt(0).toUpperCase() + d.fleet.slice(1)}<br/>
-                            Type: ${d.type}<br/>
-                            Guns: ${d.guns}<br/>
-                            Crew: ${d.crew}<br/>
-                            Health: ${Math.round(d.health)}%<br/>
-                            Morale: ${Math.round(d.morale)}%<br/>
-                            ${d.flagship ? '<em>⭐ Flagship</em>' : ''}<br/>
-                            ${d.inCombat ? '<em>🔥 In Combat</em>' : ''}
-                        `);
-                })
-                .on("mouseout", function() {
-                    d3.select("#tooltip").style("opacity", 0);
-                })
-                .on("click", function(event, d) {
-                    focusOnShip(d);
-                });
-        }
-        
-        // Battle control functions
-        function startBattle() {
-            if (!battleStarted) {
-                // Enable audio context on user interaction (browser requirement)
-                if (audioContext && audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                
-                // For mobile devices, ensure audio is unlocked when battle starts
-                if (isMobile && audioContext && !audioUnlocked) {
-                    const source = audioContext.createBufferSource();
-                    const buffer = audioContext.createBuffer(1, 1, 22050);
-                    source.buffer = buffer;
-                    source.connect(audioContext.destination);
-                    source.start(0);
-                    
-                    audioContext.resume().then(() => {
-                        audioUnlocked = true;
-                        if (!audioInitialized) {
-                            generateCannonSounds();
-                            audioInitialized = true;
-                        }
-                        updateSoundButton();
-                        console.log("Mobile audio unlocked via battle start");
-                    });
-                }
-                
-                battleStarted = true;
-                battlePaused = false;
-                d3.select("#battle-status").text("Battle commencing - Nelson's attack begins!");
-                simulateBattle();
-            } else if (battlePaused) {
-                battlePaused = false;
-                d3.select("#battle-status").text("Battle resumed");
-                simulateBattle();
-            }
-        }
-        
-        function pauseBattle() {
-            battlePaused = true;
-            d3.select("#battle-status").text("Battle paused");
-        }
-        
-        function resetBattle() {
-            battleStarted = false;
-            battlePaused = false;
-            battleTime = 0;
-            casualties = 0;
-            
-            // Reset ship positions and health
-            ships.forEach((ship, index) => {
-                const originalData = Object.values(fleetData).flat()[index];
-                ship.health = 100;
-                ship.sunk = false;
-                ship.inCombat = false;
-                ship.target = null;
-                ship.morale = 100;
-                ship.damage = 0;
-                ship.x = originalData.x;
-                ship.y = originalData.y;
-                ship.angle = ship.fleet === 'british' ? 180 : 0;
-            });
-            
-            d3.select("#battle-status").text("Preparing for battle...");
-            d3.select("#san-ildefonso-status").text("San Ildefonso: Ready for action");
-            d3.select("#casualties").text("Ships lost: 0");
-            d3.select("#time").text("Time: 12:00 PM");
-            
-            // Remove all visual effects
-            svg.selectAll(".cannon-fire").remove();
-            svg.selectAll(".smoke").remove();
-            svg.selectAll(".explosion").remove();
-            
-            // Redraw ships
-            svg.selectAll(".ship").remove();
-            drawShips();
-            setupInteraction();
-        }
-        
-        function toggleSpeed() {
-            battleSpeed = battleSpeed === 1 ? 2 : battleSpeed === 2 ? 4 : 1;
-            d3.select(event.target).text(`Speed: ${battleSpeed}x`);
         }
         
         function focusOnSanIldefonso() {
@@ -958,102 +1046,98 @@
         }
         
         function focusOnShip(ship) {
-            svg.transition()
-                .duration(1500)
-                .attr("viewBox", `${ship.x - 200} ${ship.y - 150} 400 300`);
-                
-            // Highlight the focused ship
-            svg.selectAll(".ship").style("opacity", 0.5);
-            svg.select(`[data-ship-id="${ship.id}"]`).style("opacity", 1);
+            map.setCenter({ lat: ship.lat, lng: ship.lng });
+            map.setZoom(14);
+            
+            // Highlight ship
+            battleSvg.selectAll('.ship').style('opacity', 0.5);
+            battleSvg.select(`[data-ship-id="${ship.id}"]`).style('opacity', 1);
             
             setTimeout(() => {
-                svg.selectAll(".ship").style("opacity", 1);
-                svg.transition().duration(1000).attr("viewBox", `0 0 ${width} ${height}`);
+                battleSvg.selectAll('.ship').style('opacity', 1);
+                map.setZoom(12);
             }, 3000);
+        }
+        
+        function zoomIn() {
+            const zoom = map.getZoom();
+            map.setZoom(Math.min(zoom + 1, 20));
+        }
+        
+        function zoomOut() {
+            const zoom = map.getZoom();
+            map.setZoom(Math.max(zoom - 1, 3));
+        }
+        
+        function showTooltip(event, ship) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.opacity = 1;
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+            tooltip.innerHTML = `
+                <strong>${ship.name}</strong><br/>
+                Fleet: ${ship.fleet.charAt(0).toUpperCase() + ship.fleet.slice(1)}<br/>
+                Type: ${ship.type}<br/>
+                Guns: ${ship.guns}<br/>
+                Crew: ${ship.crew}<br/>
+                Health: ${Math.round(ship.health)}%<br/>
+                Morale: ${Math.round(ship.morale)}%<br/>
+                ${ship.flagship ? '<em>⭐ Flagship</em><br/>' : ''}
+                ${ship.inCombat ? '<em>🔥 In Combat</em>' : ''}
+            `;
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').style.opacity = 0;
         }
         
         function simulateBattle() {
             if (!battleStarted || battlePaused) return;
             
-            // Move ships into battle formation
             moveShipsIntoBattle();
-            
-            // Handle combat
             handleCombat();
             
-            // Update battle time and status
-            battleTime += battleSpeed;
+            battleTime += battleSpeed * 16; // 16ms per frame at 1x speed
             updateBattleStatus();
             
-            // Create water effects periodically
-            if (battleTime % 200 === 0) {
-                createWaterEffects();
-            }
-            
-            // Check battle end conditions
             checkBattleEnd();
             
-            // Continue simulation
-            setTimeout(simulateBattle, 100);
+            setTimeout(simulateBattle, 16); // ~60fps
         }
         
         function moveShipsIntoBattle() {
+            const centerLat = BATTLE_COORDS.lat;
+            const centerLng = BATTLE_COORDS.lng;
+            
             ships.forEach(ship => {
                 if (ship.sunk) return;
                 
-                // British ships move in two columns perpendicular to enemy line
                 if (ship.fleet === 'british') {
-                    if (ship.name.includes('Royal Sovereign') || ship.name.includes('Conqueror') || 
-                        ship.name.includes('Leviathan') || ship.name.includes('Agamemnon')) {
-                        // Southern column (Collingwood's division)
-                        ship.x = Math.max(ship.x - 0.8 * battleSpeed, 420);
-                        ship.angle = 270;
-                        if (ship.x <= 420) ship.y = Math.max(ship.y - 0.3 * battleSpeed, 300);
-                    } else {
-                        // Northern column (Nelson's division)
-                        ship.x = Math.max(ship.x - 0.6 * battleSpeed, 450);
-                        ship.angle = 270;
-                        if (ship.x <= 450) ship.y = Math.min(ship.y + 0.2 * battleSpeed, 400);
-                    }
-                }
-                
-                // Franco-Spanish line tries to maintain formation but begins to break
-                if (ship.fleet === 'spanish' || ship.fleet === 'french') {
-                    ship.angle = 0;
+                    // British ships attack in two columns
+                    const targetLat = centerLat + (Math.random() - 0.5) * 0.02;
+                    const targetLng = centerLng + 0.01;
                     
-                    // San Ildefonso specific historical movements
-                    if (ship.name === "San Ildefonso") {
-                        if (battleTime < 300) {
-                            // Initial positioning in line
-                            ship.x += 0.1 * battleSpeed;
-                        } else if (battleTime < 800) {
-                            // Engage HMS Defiance and other British ships
-                            ship.x -= 0.3 * battleSpeed;
-                            ship.y += 0.2 * battleSpeed;
-                            ship.angle = 315; // Turn to engage
-                        } else if (battleTime < 1200) {
-                            // Heavy combat phase
-                            ship.angle = 270;
-                            if (ship.health < 50) {
-                                ship.x += 0.1 * battleSpeed; // Try to withdraw
-                            }
-                        }
-                    }
+                    const latDiff = targetLat - ship.lat;
+                    const lngDiff = targetLng - ship.lng;
                     
-                    // Other ships follow general patterns
-                    if (battleTime > 200) {
-                        // Line begins to break as British ships cut through
-                        ship.x -= 0.1 * battleSpeed;
-                        if (ship.health < 70) {
-                            ship.y += (Math.random() - 0.5) * 0.4 * battleSpeed;
-                        }
-                    }
+                    ship.lat += latDiff * 0.001 * battleSpeed;
+                    ship.lng += lngDiff * 0.001 * battleSpeed;
+                    ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 270;
+                } else {
+                    // Franco-Spanish line formation
+                    const targetLat = centerLat + (Math.random() - 0.5) * 0.01;
+                    const targetLng = centerLng - 0.01;
+                    
+                    const latDiff = targetLat - ship.lat;
+                    const lngDiff = targetLng - ship.lng;
+                    
+                    ship.lat += latDiff * 0.0005 * battleSpeed;
+                    ship.lng += lngDiff * 0.0005 * battleSpeed;
+                    ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
                 }
-                
-                // Keep ships within bounds
-                ship.x = Math.max(50, Math.min(width - 50, ship.x));
-                ship.y = Math.max(50, Math.min(height - 100, ship.y));
             });
+            
+            updateShipPositions();
         }
         
         function handleCombat() {
@@ -1064,25 +1148,23 @@
                 const enemies = ships.filter(s => 
                     !s.sunk && 
                     s.fleet !== ship.fleet && 
-                    Math.abs(s.x - ship.x) < 120 && 
-                    Math.abs(s.y - ship.y) < 120
+                    Math.abs(s.lat - ship.lat) < 0.008 && 
+                    Math.abs(s.lng - ship.lng) < 0.008
                 );
                 
                 if (enemies.length > 0) {
                     ship.inCombat = true;
-                    const target = enemies.reduce((closest, enemy) => {
-                        const distToEnemy = Math.hypot(enemy.x - ship.x, enemy.y - ship.y);
-                        const distToClosest = Math.hypot(closest.x - ship.x, closest.y - ship.y);
-                        return distToEnemy < distToClosest ? enemy : closest;
-                    });
-                    
+                    const target = enemies[0]; // Engage closest enemy
                     ship.target = target;
                     
-                    // Fire cannons based on reload time and range
-                    const distance = Math.hypot(target.x - ship.x, target.y - ship.y);
-                    const reloadTime = 180 - (ship.guns / 2); // Faster reload for more guns
+                    const distance = Math.hypot(
+                        (target.lat - ship.lat) * 111000,
+                        (target.lng - ship.lng) * 111000 * Math.cos(ship.lat * Math.PI / 180)
+                    );
                     
-                    if (battleTime - ship.lastFired > reloadTime && distance < 100) {
+                    const reloadTime = 3000 - (ship.guns * 10); // Faster reload for more guns
+                    
+                    if (battleTime - ship.lastFired > reloadTime && distance < 500) {
                         fireCannons(ship, target);
                         ship.lastFired = battleTime;
                     }
@@ -1094,79 +1176,36 @@
         }
         
         function fireCannons(attacker, target) {
-            const distance = Math.hypot(target.x - attacker.x, target.y - attacker.y);
-            const accuracy = Math.max(0.3, 1 - (distance / 150)) * (attacker.morale / 100);
+            const distance = Math.hypot(
+                (target.lat - attacker.lat) * 111000,
+                (target.lng - attacker.lng) * 111000 * Math.cos(attacker.lat * Math.PI / 180)
+            );
             
-            // Play realistic cannon sound effect
-            playCannonSound(distance, attacker.guns);
+            const accuracy = Math.max(0.2, 1 - (distance / 600)) * (attacker.morale / 100);
             
-            // Create cannon fire visual effect
-            const fireGroup = svg.append("g").attr("class", "cannon-fire");
+            // Play cannon sound
+            playAudioFile('cannon');
             
-            const midX = (attacker.x + target.x) / 2;
-            const midY = (attacker.y + target.y) / 2;
-            
-            // Muzzle flash
-            fireGroup.append("circle")
-                .attr("cx", attacker.x)
-                .attr("cy", attacker.y)
-                .attr("r", 5)
-                .attr("fill", "#FFD700")
-                .transition()
-                .duration(200)
-                .attr("r", 15)
-                .style("opacity", 0)
-                .remove();
-            
-            // Cannon ball trajectory
-            fireGroup.append("circle")
-                .attr("cx", attacker.x)
-                .attr("cy", attacker.y)
-                .attr("r", 2)
-                .attr("fill", "#2F4F4F")
-                .transition()
-                .duration(500)
-                .attr("cx", target.x + (Math.random() - 0.5) * 40)
-                .attr("cy", target.y + (Math.random() - 0.5) * 40)
-                .remove();
-            
-            // Smoke effect
-            fireGroup.append("ellipse")
-                .attr("cx", attacker.x)
-                .attr("cy", attacker.y)
-                .attr("rx", 0)
-                .attr("ry", 0)
-                .attr("class", "smoke")
-                .transition()
-                .duration(2000)
-                .attr("rx", 20)
-                .attr("ry", 15)
-                .style("opacity", 0)
-                .remove();
+            // Create visual effect
+            createCannonEffect(attacker, target);
             
             // Apply damage if hit
             if (Math.random() < accuracy) {
-                const baseDamage = (attacker.guns / 10) + Math.random() * 10;
-                const damage = baseDamage * (distance < 50 ? 1.5 : 1); // Close range bonus
+                const baseDamage = (attacker.guns / 8) + Math.random() * 15;
+                const damage = baseDamage * (distance < 300 ? 1.5 : 1);
                 
                 target.health -= damage;
                 target.damage += damage;
-                target.morale -= damage / 5;
+                target.morale = Math.max(10, target.morale - damage / 8);
                 
-                // Create hit effect
-                svg.append("circle")
-                    .attr("cx", target.x)
-                    .attr("cy", target.y)
-                    .attr("r", 0)
-                    .attr("fill", "#FF4500")
+                attacker.morale = Math.max(50, attacker.morale - 0.5);
+                
+                // Update health bar
+                battleSvg.select(`[data-ship-id="${target.id}"] .health-fill`)
                     .transition()
-                    .duration(300)
-                    .attr("r", 12)
-                    .style("opacity", 0)
-                    .remove();
-                
-                // Damage attacker's morale slightly (battle fatigue)
-                attacker.morale -= 1;
+                    .duration(200)
+                    .attr('width', 20 * (target.health / 100))
+                    .attr('fill', target.health > 70 ? '#4CAF50' : target.health > 30 ? '#FFC107' : '#F44336');
                 
                 if (target.health <= 0 && !target.sunk) {
                     sinkShip(target);
@@ -1174,65 +1213,119 @@
             }
         }
         
+        function createCannonEffect(attacker, target) {
+            const attackerPoint = latLngToPoint(attacker.lat, attacker.lng);
+            const targetPoint = latLngToPoint(target.lat, target.lng);
+            
+            if (!attackerPoint || !targetPoint) return;
+            
+            const effectGroup = battleSvg.append('g').attr('class', 'cannon-fire');
+            
+            // Muzzle flash
+            effectGroup.append('circle')
+                .attr('cx', attackerPoint.x)
+                .attr('cy', attackerPoint.y)
+                .attr('r', 3)
+                .attr('class', 'muzzle-flash')
+                .transition()
+                .duration(150)
+                .attr('r', 12)
+                .style('opacity', 0)
+                .remove();
+            
+            // Cannonball
+            effectGroup.append('circle')
+                .attr('cx', attackerPoint.x)
+                .attr('cy', attackerPoint.y)
+                .attr('r', 2)
+                .attr('class', 'cannonball')
+                .transition()
+                .duration(400)
+                .attr('cx', targetPoint.x + (Math.random() - 0.5) * 30)
+                .attr('cy', targetPoint.y + (Math.random() - 0.5) * 30)
+                .remove();
+            
+            // Smoke
+            effectGroup.append('ellipse')
+                .attr('cx', attackerPoint.x)
+                .attr('cy', attackerPoint.y)
+                .attr('rx', 0)
+                .attr('ry', 0)
+                .attr('class', 'smoke')
+                .transition()
+                .duration(1500)
+                .attr('rx', 15)
+                .attr('ry', 10)
+                .style('opacity', 0)
+                .remove();
+        }
+        
         function sinkShip(ship) {
             ship.sunk = true;
             casualties++;
             
-            // Play dramatic explosion sound
-            playExplosionSound();
+            playAudioFile('explosion');
+            
+            const shipPoint = latLngToPoint(ship.lat, ship.lng);
+            if (!shipPoint) return;
             
             // Explosion effect
-            const explosion = svg.append("g").attr("class", "explosion");
+            const explosion = battleSvg.append('g').attr('class', 'explosion');
             
-            explosion.append("circle")
-                .attr("cx", ship.x)
-                .attr("cy", ship.y)
-                .attr("r", 0)
-                .attr("fill", "#FF4500")
+            explosion.append('circle')
+                .attr('cx', shipPoint.x)
+                .attr('cy', shipPoint.y)
+                .attr('r', 0)
+                .attr('fill', '#FF4500')
                 .transition()
-                .duration(1000)
-                .attr("r", 40)
-                .style("opacity", 0)
+                .duration(800)
+                .attr('r', 30)
+                .style('opacity', 0)
                 .remove();
             
             // Debris
-            for (let i = 0; i < 8; i++) {
-                explosion.append("rect")
-                    .attr("x", ship.x)
-                    .attr("y", ship.y)
-                    .attr("width", 3)
-                    .attr("height", 8)
-                    .attr("fill", "#8B4513")
+            for (let i = 0; i < 6; i++) {
+                explosion.append('rect')
+                    .attr('x', shipPoint.x)
+                    .attr('y', shipPoint.y)
+                    .attr('width', 2)
+                    .attr('height', 6)
+                    .attr('fill', '#8B4513')
                     .transition()
-                    .duration(2000)
-                    .attr("x", ship.x + (Math.random() - 0.5) * 100)
-                    .attr("y", ship.y + Math.random() * 50)
-                    .style("opacity", 0)
+                    .duration(1500)
+                    .attr('x', shipPoint.x + (Math.random() - 0.5) * 60)
+                    .attr('y', shipPoint.y + Math.random() * 40)
+                    .style('opacity', 0)
                     .remove();
             }
             
-            // Ship sinking animation
-            svg.select(`[data-ship-id="${ship.id}"]`)
+            // Sink ship animation
+            battleSvg.select(`[data-ship-id="${ship.id}"]`)
                 .transition()
-                .duration(3000)
-                .style("opacity", 0.2)
-                .attr("transform", d => `translate(${d.x}, ${d.y + 30}) rotate(${d.angle + 45}) scale(0.8)`);
+                .duration(2000)
+                .style('opacity', 0.3)
+                .attr('transform', d => `translate(${d.screenX}, ${d.screenY + 20}) scale(0.8) rotate(${d.angle + 30})`);
             
-            // Update status for San Ildefonso
             if (ship.name === "San Ildefonso") {
-                d3.select("#san-ildefonso-status").html("<strong>San Ildefonso: SUNK! ⚓</strong>");
+                updateBattleStatus("San Ildefonso has been sunk! ⚓");
             }
         }
         
-        function updateBattleStatus() {
-            const minutes = Math.floor(battleTime / 600);
-            const hours = 12 + Math.floor(minutes / 60);
+        function updateBattleStatus(customMessage) {
+            if (customMessage) {
+                document.getElementById('battle-status').textContent = customMessage;
+                return;
+            }
+            
+            const minutes = Math.floor(battleTime / 60000);
+            const hours = 6 + Math.floor(minutes / 60);
             const displayMinutes = minutes % 60;
             
-            d3.select("#time").text(`Time: ${hours}:${displayMinutes.toString().padStart(2, '0')} PM`);
-            d3.select("#casualties").text(`Ships lost: ${casualties}`);
+            document.getElementById('time').textContent = 
+                `Time: ${hours.toString().padStart(2, '0')}:${displayMinutes.toString().padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`;
+            document.getElementById('casualties').textContent = `Ships lost: ${casualties}`;
             
-            // Update San Ildefonso specific status
+            // Update San Ildefonso status
             const sanIldefonso = ships.find(s => s.name === "San Ildefonso");
             if (sanIldefonso && !sanIldefonso.sunk) {
                 let status = `San Ildefonso: ${Math.round(sanIldefonso.health)}% hull integrity`;
@@ -1242,21 +1335,7 @@
                 if (sanIldefonso.health < 30) {
                     status += " - CRITICAL DAMAGE! ⚠️";
                 }
-                d3.select("#san-ildefonso-status").html(`<strong>${status}</strong>`);
-            }
-            
-            // Update overall battle status
-            const britishLosses = ships.filter(s => s.fleet === 'british' && s.sunk).length;
-            const allyLosses = ships.filter(s => (s.fleet === 'spanish' || s.fleet === 'french') && s.sunk).length;
-            
-            if (battleTime > 2000) {
-                if (allyLosses > britishLosses * 2) {
-                    d3.select("#battle-status").text("British victory becoming apparent...");
-                } else if (britishLosses > allyLosses) {
-                    d3.select("#battle-status").text("Franco-Spanish resistance holding...");
-                } else {
-                    d3.select("#battle-status").text("Battle raging - outcome uncertain!");
-                }
+                document.getElementById('san-ildefonso-status').innerHTML = `<strong>${status}</strong>`;
             }
         }
         
@@ -1264,29 +1343,34 @@
             const totalShips = ships.length;
             const sunkShips = ships.filter(s => s.sunk).length;
             
-            if (sunkShips > totalShips * 0.3 || battleTime > 3000) {
+            if (sunkShips > totalShips * 0.4 || battleTime > 1800000) { // 30 minutes
                 battleStarted = false;
                 
                 const britishLosses = ships.filter(s => s.fleet === 'british' && s.sunk).length;
                 const allyLosses = ships.filter(s => (s.fleet === 'spanish' || s.fleet === 'french') && s.sunk).length;
                 
                 if (allyLosses > britishLosses) {
-                    d3.select("#battle-status").text("Battle concluded - British victory! Nelson's tactics triumph.");
+                    updateBattleStatus("Battle concluded - British victory! Nelson's tactics triumph.");
                 } else {
-                    d3.select("#battle-status").text("Battle concluded - Tactical draw achieved.");
+                    updateBattleStatus("Battle concluded - Tactical stalemate achieved.");
                 }
             }
         }
         
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            const newWidth = window.innerWidth;
-            const newHeight = window.innerHeight;
-            svg.attr("width", newWidth).attr("height", newHeight);
+        // Map event listeners
+        google.maps.event.addDomListener(window, 'load', () => {
+            // Update ship positions when map moves
+            map.addListener('bounds_changed', () => {
+                setTimeout(updateShipPositions, 100);
+            });
+            
+            map.addListener('zoom_changed', () => {
+                updateShipScale();
+            });
         });
         
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initSimulation);
+        detectMobile();
     </script>
 </body>
 </html>

@@ -49,10 +49,53 @@
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
+            transition: all 0.3s ease;
         }
         
         .control-btn:hover {
             background: #A0522D;
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .control-btn {
+                padding: 12px 24px;
+                font-size: 14px;
+                margin: 8px 4px;
+                min-width: 120px;
+            }
+            
+            .controls {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .battle-info {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+                font-size: 12px;
+            }
+        }
+        
+        /* Pulsing animation for mobile audio activation */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(218, 165, 32, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(218, 165, 32, 0); }
+        }
+        
+        .control-btn.audio-prompt {
+            animation: pulse 2s infinite;
         }
         
         .ship-tooltip {
@@ -176,20 +219,72 @@
         let svg, simulation, ships = [], cannonFires = [], 
             battleStarted = false, battlePaused = false, 
             battleTime = 0, casualties = 0, battleSpeed = 1,
-            audioContext, cannonSounds = [], soundEnabled = true;
+            audioContext, cannonSounds = [], soundEnabled = true,
+            audioInitialized = false, isMobile = false, audioUnlocked = false;
         
         const width = window.innerWidth;
         const height = window.innerHeight;
+        
+        // Detect mobile devices
+        function detectMobile() {
+            isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                      ('ontouchstart' in window) || 
+                      (navigator.maxTouchPoints > 0);
+        }
         
         // Audio initialization and sound generation
         function initAudio() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                generateCannonSounds();
+                
+                if (isMobile) {
+                    // For mobile devices, don't generate sounds until user interaction
+                    console.log("Mobile device detected - audio will initialize on user interaction");
+                    addMobileAudioHandlers();
+                } else {
+                    generateCannonSounds();
+                    audioInitialized = true;
+                    audioUnlocked = true;
+                }
             } catch (e) {
                 console.warn("Audio not supported, continuing without sound effects");
                 soundEnabled = false;
             }
+        }
+        
+        // Add mobile-specific audio event handlers
+        function addMobileAudioHandlers() {
+            const unlockAudio = () => {
+                if (audioContext && !audioUnlocked) {
+                    // Create a silent sound to unlock the audio context
+                    const source = audioContext.createBufferSource();
+                    const buffer = audioContext.createBuffer(1, 1, 22050);
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                    
+                    // Resume the audio context
+                    audioContext.resume().then(() => {
+                        audioUnlocked = true;
+                        if (!audioInitialized) {
+                            generateCannonSounds();
+                            audioInitialized = true;
+                        }
+                        console.log("Mobile audio unlocked successfully");
+                        updateSoundButton();
+                    });
+                    
+                    // Remove the event listeners once unlocked
+                    document.removeEventListener('touchstart', unlockAudio);
+                    document.removeEventListener('touchend', unlockAudio);
+                    document.removeEventListener('click', unlockAudio);
+                }
+            };
+            
+            // Add event listeners for user interaction
+            document.addEventListener('touchstart', unlockAudio, false);
+            document.addEventListener('touchend', unlockAudio, false);
+            document.addEventListener('click', unlockAudio, false);
         }
         
         function generateCannonSounds() {
@@ -241,7 +336,7 @@
         }
         
         function playExplosionSound() {
-            if (!soundEnabled || !audioContext) return;
+            if (!soundEnabled || !audioContext || !audioUnlocked) return;
             
             try {
                 if (audioContext.state === 'suspended') {
@@ -304,7 +399,7 @@
         }
         
         function playCannonSound(distance = 50, shipGuns = 74) {
-            if (!soundEnabled || !audioContext || cannonSounds.length === 0) return;
+            if (!soundEnabled || !audioContext || cannonSounds.length === 0 || !audioUnlocked) return;
             
             try {
                 // Resume audio context if suspended (browser autoplay policy)
@@ -349,9 +444,35 @@
         
         function toggleSound() {
             soundEnabled = !soundEnabled;
-            const button = event.target;
-            button.textContent = soundEnabled ? "Sound: ON" : "Sound: OFF";
-            button.style.background = soundEnabled ? "#8B4513" : "#555";
+            updateSoundButton();
+            
+            // If enabling sound on mobile and audio hasn't been unlocked yet
+            if (soundEnabled && isMobile && !audioUnlocked && audioContext) {
+                console.log("Sound enabled on mobile - will activate on next interaction");
+            }
+        }
+        
+        function updateSoundButton() {
+            const button = document.querySelector('.control-btn[onclick="toggleSound()"]');
+            if (button) {
+                let buttonText = "Sound: ";
+                button.classList.remove('audio-prompt');
+                
+                if (!audioContext) {
+                    buttonText += "UNAVAILABLE";
+                    button.style.background = "#444";
+                } else if (isMobile && !audioUnlocked) {
+                    buttonText += soundEnabled ? "TAP TO ENABLE" : "OFF";
+                    button.style.background = soundEnabled ? "#DAA520" : "#555";
+                    if (soundEnabled) {
+                        button.classList.add('audio-prompt');
+                    }
+                } else {
+                    buttonText += soundEnabled ? "ON" : "OFF";
+                    button.style.background = soundEnabled ? "#8B4513" : "#555";
+                }
+                button.textContent = buttonText;
+            }
         }
         
         // Historical ship data for Battle of Trafalgar
@@ -400,6 +521,9 @@
         function initSimulation() {
             svg = d3.select("#battle-simulation");
             
+            // Detect mobile device first
+            detectMobile();
+            
             // Initialize audio system
             initAudio();
             
@@ -423,6 +547,9 @@
             
             // Setup interaction
             setupInteraction();
+            
+            // Update the sound button to reflect mobile state
+            updateSoundButton();
         }
         
         function createWaterEffects() {
@@ -745,6 +872,25 @@
                 // Enable audio context on user interaction (browser requirement)
                 if (audioContext && audioContext.state === 'suspended') {
                     audioContext.resume();
+                }
+                
+                // For mobile devices, ensure audio is unlocked when battle starts
+                if (isMobile && audioContext && !audioUnlocked) {
+                    const source = audioContext.createBufferSource();
+                    const buffer = audioContext.createBuffer(1, 1, 22050);
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                    
+                    audioContext.resume().then(() => {
+                        audioUnlocked = true;
+                        if (!audioInitialized) {
+                            generateCannonSounds();
+                            audioInitialized = true;
+                        }
+                        updateSoundButton();
+                        console.log("Mobile audio unlocked via battle start");
+                    });
                 }
                 
                 battleStarted = true;

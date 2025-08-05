@@ -376,11 +376,14 @@
         <div class="battle-info">
             <h3>Battle of Trafalgar - October 21, 1805</h3>
             <div id="battle-status">Fleets anchored in home waters, awaiting orders...</div>
-            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> Ready in Cadiz</div>
+            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> 74-gun Spanish ship of the line ready</div>
             <div id="casualties">Ships lost: 0</div>
-            <div id="time">Time: 06:00 AM</div>
+            <div id="time">Time: 06:00 AM, October 21st, 1805</div>
             <div id="weather">Wind: Light SW breeze, 10 knots</div>
-                            <div id="coordinates">Battle Zone: 36°11'N, 6°02'W (Off Cape Trafalgar)</div>
+            <div id="coordinates">Battle Zone: 36°11'N, 6°02'W (Off Cape Trafalgar)</div>
+            <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
+                Historical Fleet Count: British 27 ships | Franco-Spanish Combined 33 ships
+            </div>
         </div>
         
         <div class="legend">
@@ -477,19 +480,24 @@
             ]
         };
         
-        // Historical ship data
+        // Historical ship data - Based on actual Battle of Trafalgar fleet compositions
         const fleetData = {
             spanish: [
                 { name: "San Ildefonso", type: "Ship of the Line", guns: 74, flagship: true, crew: 640 },
-                { name: "Santísima Trinidad", type: "First Rate", guns: 136, crew: 1048 },
-                { name: "Santa Ana", type: "Ship of the Line", guns: 112, crew: 810 },
+                { name: "Santísima Trinidad", type: "First Rate", guns: 130, crew: 1048 },
+                { name: "Santa Ana", type: "First Rate", guns: 112, crew: 810 },
+                { name: "Principe de Asturias", type: "First Rate", guns: 112, flagship: true, crew: 810 },
                 { name: "San Juan Nepomuceno", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "San Justo", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "San Leandro", type: "Ship of the Line", guns: 64, crew: 520 },
                 { name: "Monarca", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "Neptuno", type: "Ship of the Line", guns: 80, crew: 690 },
                 { name: "Bahama", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, crew: 640 }
+                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Argonauta", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Montañés", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Rayo", type: "First Rate", guns: 100, crew: 800 },
+                { name: "San Augustín", type: "Ship of the Line", guns: 74, crew: 640 }
             ],
             french: [
                 { name: "Bucentaure", type: "Ship of the Line", guns: 80, flagship: true, crew: 690 },
@@ -501,21 +509,44 @@
                 { name: "Aigle", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "Achille", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "Berwick", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "Algésiras", type: "Ship of the Line", guns: 74, crew: 640 }
+                { name: "Algésiras", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Héros", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Pluton", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Swiftsure", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Argonaute", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Formidable", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Duguay-Trouin", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Mont-Blanc", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Scipion", type: "Ship of the Line", guns: 74, crew: 640 }
             ],
             british: [
-                { name: "HMS Victory", type: "First Rate", guns: 104, flagship: true, crew: 820 },
+                { name: "HMS Victory", type: "First Rate", guns: 100, flagship: true, crew: 820 },
                 { name: "HMS Royal Sovereign", type: "First Rate", guns: 100, flagship: true, crew: 800 },
                 { name: "HMS Temeraire", type: "Ship of the Line", guns: 98, crew: 750 },
                 { name: "HMS Neptune", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Britannia", type: "First Rate", guns: 100, crew: 800 },
+                { name: "HMS Dreadnought", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Prince", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, crew: 690 },
                 { name: "HMS Conqueror", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Leviathan", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Ajax", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Orion", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Minotaur", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Spartiate", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Belleisle", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Mars", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Bellerophon", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Colossus", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "HMS Britannia", type: "First Rate", guns: 100, crew: 800 },
-                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, crew: 690 }
+                { name: "HMS Achille", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Revenge", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Swiftsure", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Defiance", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Thunderer", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Defence", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Africa", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Polyphemus", type: "Ship of the Line", guns: 64, crew: 520 }
             ]
         };
         
@@ -799,12 +830,50 @@
             Object.keys(fleetData).forEach(fleet => {
                 const homePort = HOME_PORTS[fleet];
                 fleetData[fleet].forEach((shipData, index) => {
-                    // Position ships in standardized formation around their home anchorages
-                    const angle = (index / fleetData[fleet].length) * 2 * Math.PI;
+                    let initialCoords;
+                    let initialAngle;
                     
-                    // Use standardized formation configuration for all fleets
-                    const radiusVariation = FORMATION_CONFIG.radius * 
-                        (FORMATION_CONFIG.baseVariation + Math.random() * FORMATION_CONFIG.radiusVariation);
+                    if (fleet === 'british') {
+                        // British fleet starts west of Cape Trafalgar in formation
+                        const nelsonShips = ['HMS Victory', 'HMS Temeraire', 'HMS Neptune', 'HMS Leviathan', 'HMS Conqueror', 'HMS Britannia', 'HMS Ajax', 'HMS Agamemnon', 'HMS Orion', 'HMS Minotaur', 'HMS Spartiate', 'HMS Africa'];
+                        const collingwoodShips = ['HMS Royal Sovereign', 'HMS Belleisle', 'HMS Mars', 'HMS Tonnant', 'HMS Bellerophon', 'HMS Colossus', 'HMS Achille', 'HMS Revenge', 'HMS Defiance', 'HMS Dreadnought', 'HMS Thunderer', 'HMS Swiftsure', 'HMS Polyphemus', 'HMS Defence', 'HMS Prince'];
+                        
+                        if (nelsonShips.includes(shipData.name)) {
+                            const columnIndex = nelsonShips.indexOf(shipData.name);
+                            initialCoords = [
+                                homePort.coords[0] - 0.005, // West of normal position
+                                homePort.coords[1] + 0.01 + (columnIndex * 0.002) // Nelson's column formation
+                            ];
+                            initialAngle = 90; // Facing east toward enemy
+                        } else if (collingwoodShips.includes(shipData.name)) {
+                            const columnIndex = collingwoodShips.indexOf(shipData.name);
+                            initialCoords = [
+                                homePort.coords[0] - 0.008, // Further west
+                                homePort.coords[1] - 0.005 + (columnIndex * 0.002) // Collingwood's column formation
+                            ];
+                            initialAngle = 90; // Facing east toward enemy
+                        } else {
+                            // Fallback for any additional British ships
+                            const angle = (index / fleetData[fleet].length) * 2 * Math.PI;
+                            const radiusVariation = FORMATION_CONFIG.radius * 
+                                (FORMATION_CONFIG.baseVariation + Math.random() * FORMATION_CONFIG.radiusVariation);
+                            initialCoords = [
+                                homePort.coords[0] + Math.cos(angle) * radiusVariation,
+                                homePort.coords[1] + Math.sin(angle) * radiusVariation
+                            ];
+                            initialAngle = Math.random() * 360;
+                        }
+                    } else {
+                        // Franco-Spanish Combined Fleet starts in line formation off Cadiz
+                        const totalShips = Object.values(fleetData).flat().filter(s => s !== shipData && (s.fleet === 'spanish' || s.fleet === 'french')).length + index;
+                        const linePosition = (index / fleetData[fleet].length) - 0.5;
+                        
+                        initialCoords = [
+                            homePort.coords[0] + 0.005, // East of port
+                            homePort.coords[1] + (linePosition * 0.025) // Line formation
+                        ];
+                        initialAngle = 180; // Facing south initially
+                    }
                     
                     ships.push({
                         id: id++,
@@ -812,17 +881,13 @@
                         fleet: fleet,
                         health: 100,
                         sunk: false,
-                        angle: Math.random() * 360, // Random initial facing for realism
+                        angle: initialAngle,
                         inCombat: false,
                         target: null,
                         lastFired: 0,
                         morale: 100,
                         damage: 0,
-                        // Starting position in standardized sea formation (longitude, latitude)
-                        coords: [
-                            homePort.coords[0] + Math.cos(angle) * radiusVariation,
-                            homePort.coords[1] + Math.sin(angle) * radiusVariation
-                        ],
+                        coords: initialCoords,
                         // Journey state with maritime route following
                         journeyProgress: 0,
                         currentWaypoint: 0,
@@ -1060,7 +1125,7 @@
                 } else if (progress < 0.7) {
                     statusMessage += "Ships sailing open seas, following maritime routes...";
                 } else {
-                    statusMessage += "Fleets converging on battle position...";
+                    statusMessage += "British columns advancing to break the enemy line - Nelson's tactical masterstroke unfolds...";
                 }
                 
                 updateBattleStatus(statusMessage);
@@ -1115,7 +1180,7 @@
             document.getElementById('startBattleBtn').classList.remove('audio-prompt');
             document.getElementById('startBattleBtn').disabled = true;
             
-            updateBattleStatus("Battle commenced! Nelson's attack begins!");
+                            updateBattleStatus("Battle commenced! Nelson's two-column attack begins! The 'Nelson Touch' in action!");
             
             // Focus map on battle area
             view.animate({
@@ -1145,11 +1210,48 @@
             ships.forEach(ship => {
                 const homePort = HOME_PORTS[ship.fleet];
                 const index = ships.filter(s => s.fleet === ship.fleet).indexOf(ship);
-                const angle = (index / fleetData[ship.fleet].length) * 2 * Math.PI;
                 
-                // Use standardized formation configuration for all fleets
-                const radiusVariation = FORMATION_CONFIG.radius * 
-                    (FORMATION_CONFIG.baseVariation + Math.random() * FORMATION_CONFIG.radiusVariation);
+                let resetCoords;
+                let resetAngle;
+                
+                if (ship.fleet === 'british') {
+                    // Reset British fleet to historical formation
+                    const nelsonShips = ['HMS Victory', 'HMS Temeraire', 'HMS Neptune', 'HMS Leviathan', 'HMS Conqueror', 'HMS Britannia', 'HMS Ajax', 'HMS Agamemnon', 'HMS Orion', 'HMS Minotaur', 'HMS Spartiate', 'HMS Africa'];
+                    const collingwoodShips = ['HMS Royal Sovereign', 'HMS Belleisle', 'HMS Mars', 'HMS Tonnant', 'HMS Bellerophon', 'HMS Colossus', 'HMS Achille', 'HMS Revenge', 'HMS Defiance', 'HMS Dreadnought', 'HMS Thunderer', 'HMS Swiftsure', 'HMS Polyphemus', 'HMS Defence', 'HMS Prince'];
+                    
+                    if (nelsonShips.includes(ship.name)) {
+                        const columnIndex = nelsonShips.indexOf(ship.name);
+                        resetCoords = [
+                            homePort.coords[0] - 0.005,
+                            homePort.coords[1] + 0.01 + (columnIndex * 0.002)
+                        ];
+                        resetAngle = 90;
+                    } else if (collingwoodShips.includes(ship.name)) {
+                        const columnIndex = collingwoodShips.indexOf(ship.name);
+                        resetCoords = [
+                            homePort.coords[0] - 0.008,
+                            homePort.coords[1] - 0.005 + (columnIndex * 0.002)
+                        ];
+                        resetAngle = 90;
+                    } else {
+                        const angle = (index / fleetData[ship.fleet].length) * 2 * Math.PI;
+                        const radiusVariation = FORMATION_CONFIG.radius * 
+                            (FORMATION_CONFIG.baseVariation + Math.random() * FORMATION_CONFIG.radiusVariation);
+                        resetCoords = [
+                            homePort.coords[0] + Math.cos(angle) * radiusVariation,
+                            homePort.coords[1] + Math.sin(angle) * radiusVariation
+                        ];
+                        resetAngle = Math.random() * 360;
+                    }
+                } else {
+                    // Reset Franco-Spanish Combined Fleet to line formation
+                    const linePosition = (index / fleetData[ship.fleet].length) - 0.5;
+                    resetCoords = [
+                        homePort.coords[0] + 0.005,
+                        homePort.coords[1] + (linePosition * 0.025)
+                    ];
+                    resetAngle = 180;
+                }
                 
                 ship.health = 100;
                 ship.sunk = false;
@@ -1157,11 +1259,8 @@
                 ship.target = null;
                 ship.morale = 100;
                 ship.damage = 0;
-                ship.coords = [
-                    homePort.coords[0] + Math.cos(angle) * radiusVariation,
-                    homePort.coords[1] + Math.sin(angle) * radiusVariation
-                ];
-                ship.angle = Math.random() * 360;
+                ship.coords = resetCoords;
+                ship.angle = resetAngle;
                 ship.atBattle = false;
                 ship.journeyProgress = 0;
                 ship.currentWaypoint = 0;
@@ -1311,39 +1410,83 @@
                 const minDistanceFromShore = 0.005; // Keep ships at least this far from any potential land
                 
                 if (ship.fleet === 'british') {
-                    // British ships attack in two columns from the west using standardized formation
-                    const columnSpacing = FORMATION_CONFIG.radius * 0.533; // Consistent formation spacing
-                    const targetCoords = [
-                        BATTLE_COORDS[0] - 0.01, // West of battle zone
-                        BATTLE_COORDS[1] + (ship.id % 2 === 0 ? columnSpacing : -columnSpacing) // Two columns
-                    ];
+                    // Historical Nelson's Two-Column Attack Formation
+                    // Nelson's Column: Victory, Temeraire, Neptune, Leviathan, Conqueror, Britannia, Ajax, Agamemnon, Orion, Minotaur, Spartiate, Africa
+                    // Collingwood's Column: Royal Sovereign, Belleisle, Mars, Tonnant, Bellerophon, Colossus, Achille, Revenge, Defiance, Dreadnought, Thunderer, Swiftsure, Polyphemus, Defence, Prince
                     
-                    const lngDiff = targetCoords[0] - ship.coords[0];
-                    const latDiff = targetCoords[1] - ship.coords[1];
+                    const nelsonShips = ['HMS Victory', 'HMS Temeraire', 'HMS Neptune', 'HMS Leviathan', 'HMS Conqueror', 'HMS Britannia', 'HMS Ajax', 'HMS Agamemnon', 'HMS Orion', 'HMS Minotaur', 'HMS Spartiate', 'HMS Africa'];
+                    const collingwoodShips = ['HMS Royal Sovereign', 'HMS Belleisle', 'HMS Mars', 'HMS Tonnant', 'HMS Bellerophon', 'HMS Colossus', 'HMS Achille', 'HMS Revenge', 'HMS Defiance', 'HMS Dreadnought', 'HMS Thunderer', 'HMS Swiftsure', 'HMS Polyphemus', 'HMS Defence', 'HMS Prince'];
                     
-                    // Constrain movement to stay in deep water
-                    const newLng = ship.coords[0] + (lngDiff * 0.001 * battleSpeed);
-                    const newLat = ship.coords[1] + (latDiff * 0.001 * battleSpeed);
+                    const isNelsonColumn = nelsonShips.includes(ship.name);
+                    const isCollingwoodColumn = collingwoodShips.includes(ship.name);
                     
-                    // Ensure ships stay offshore
-                    if (newLng > -7.0 && newLat > 36.0 && newLat < 37.0) {
-                        ship.coords[0] = newLng;
-                        ship.coords[1] = newLat;
-                        ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
+                    if (isNelsonColumn) {
+                        // Nelson's windward column - attacks center of enemy line
+                        const columnIndex = nelsonShips.indexOf(ship.name);
+                        const columnSpacing = 0.003; // Ship spacing in column
+                        const targetCoords = [
+                            BATTLE_COORDS[0] - 0.008, // West of battle zone
+                            BATTLE_COORDS[1] + 0.005 + (columnIndex * columnSpacing) // Nelson's column north
+                        ];
+                        
+                        const lngDiff = targetCoords[0] - ship.coords[0];
+                        const latDiff = targetCoords[1] - ship.coords[1];
+                        
+                        const newLng = ship.coords[0] + (lngDiff * 0.001 * battleSpeed);
+                        const newLat = ship.coords[1] + (latDiff * 0.001 * battleSpeed);
+                        
+                        if (newLng > -7.0 && newLat > 36.0 && newLat < 37.0) {
+                            ship.coords[0] = newLng;
+                            ship.coords[1] = newLat;
+                            ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
+                        }
+                    } else if (isCollingwoodColumn) {
+                        // Collingwood's leeward column - attacks rear of enemy line
+                        const columnIndex = collingwoodShips.indexOf(ship.name);
+                        const columnSpacing = 0.003; // Ship spacing in column
+                        const targetCoords = [
+                            BATTLE_COORDS[0] - 0.012, // Further west than Nelson
+                            BATTLE_COORDS[1] - 0.010 + (columnIndex * columnSpacing) // Collingwood's column south
+                        ];
+                        
+                        const lngDiff = targetCoords[0] - ship.coords[0];
+                        const latDiff = targetCoords[1] - ship.coords[1];
+                        
+                        const newLng = ship.coords[0] + (lngDiff * 0.001 * battleSpeed);
+                        const newLat = ship.coords[1] + (latDiff * 0.001 * battleSpeed);
+                        
+                        if (newLng > -7.0 && newLat > 36.0 && newLat < 37.0) {
+                            ship.coords[0] = newLng;
+                            ship.coords[1] = newLat;
+                            ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
+                        }
                     }
                 } else {
-                    // Franco-Spanish line formation - maintain position east of battle using standardized formation
-                    const lineSpacing = FORMATION_CONFIG.radius * 0.533; // Consistent formation spacing
-                    const lineSpread = FORMATION_CONFIG.radius; // Consistent spread
+                    // Franco-Spanish Combined Fleet - Traditional Line of Battle Formation
+                    // Historically formed an imperfect arc due to poor coordination
+                    
+                    const alliedShips = ships.filter(s => s.fleet === 'spanish' || s.fleet === 'french');
+                    const shipIndex = alliedShips.indexOf(ship);
+                    const totalAlliedShips = alliedShips.length;
+                    
+                    // Create historical arc formation - poorly coordinated line
+                    const arcLength = 0.04; // Total length of the arc
+                    const arcCenter = BATTLE_COORDS[1];
+                    const linePosition = (shipIndex / (totalAlliedShips - 1)) - 0.5; // -0.5 to 0.5
+                    
+                    // Historical arc formation with center ships pushed leeward
+                    const arcCurvature = 0.008; // Amount of curvature in the line
+                    const xOffset = Math.sin(linePosition * Math.PI) * arcCurvature;
+                    
                     const targetCoords = [
-                        BATTLE_COORDS[0] + lineSpacing, // East of battle zone, in safe waters
-                        BATTLE_COORDS[1] + (Math.random() - 0.5) * lineSpread
+                        BATTLE_COORDS[0] + 0.015 + xOffset, // East of battle zone, curved line
+                        arcCenter + (linePosition * arcLength) // Spread along north-south arc
                     ];
                     
                     const lngDiff = targetCoords[0] - ship.coords[0];
                     const latDiff = targetCoords[1] - ship.coords[1];
                     
-                    // Slower, more defensive movement
+                    // Slower, more defensive movement - Combined Fleet was less maneuverable
                     const newLng = ship.coords[0] + (lngDiff * 0.0003 * battleSpeed);
                     const newLat = ship.coords[1] + (latDiff * 0.0003 * battleSpeed);
                     

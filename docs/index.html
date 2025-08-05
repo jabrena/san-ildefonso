@@ -376,11 +376,14 @@
         <div class="battle-info">
             <h3>Battle of Trafalgar - October 21, 1805</h3>
             <div id="battle-status">Fleets anchored in home waters, awaiting orders...</div>
-            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> Ready in Cadiz</div>
+            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> 74-gun Spanish ship of the line ready</div>
             <div id="casualties">Ships lost: 0</div>
-            <div id="time">Time: 06:00 AM</div>
+            <div id="time">Time: 06:00 AM, October 21st, 1805</div>
             <div id="weather">Wind: Light SW breeze, 10 knots</div>
-                            <div id="coordinates">Battle Zone: 36°11'N, 6°02'W (Off Cape Trafalgar)</div>
+            <div id="coordinates">Battle Zone: 36°11'N, 6°02'W (Off Cape Trafalgar)</div>
+            <div style="margin-top: 10px; font-size: 12px; color: #ccc;">
+                Historical Fleet Count: British 27 ships | Franco-Spanish Combined 33 ships
+            </div>
         </div>
         
         <div class="legend">
@@ -477,19 +480,24 @@
             ]
         };
         
-        // Historical ship data
+        // Historical ship data - Based on actual Battle of Trafalgar fleet compositions
         const fleetData = {
             spanish: [
                 { name: "San Ildefonso", type: "Ship of the Line", guns: 74, flagship: true, crew: 640 },
-                { name: "Santísima Trinidad", type: "First Rate", guns: 136, crew: 1048 },
-                { name: "Santa Ana", type: "Ship of the Line", guns: 112, crew: 810 },
+                { name: "Santísima Trinidad", type: "First Rate", guns: 130, crew: 1048 },
+                { name: "Santa Ana", type: "First Rate", guns: 112, crew: 810 },
+                { name: "Principe de Asturias", type: "First Rate", guns: 112, flagship: true, crew: 810 },
                 { name: "San Juan Nepomuceno", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "San Justo", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "San Leandro", type: "Ship of the Line", guns: 64, crew: 520 },
                 { name: "Monarca", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "Neptuno", type: "Ship of the Line", guns: 80, crew: 690 },
                 { name: "Bahama", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, crew: 640 }
+                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Argonauta", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Montañés", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Rayo", type: "First Rate", guns: 100, crew: 800 },
+                { name: "San Augustín", type: "Ship of the Line", guns: 74, crew: 640 }
             ],
             french: [
                 { name: "Bucentaure", type: "Ship of the Line", guns: 80, flagship: true, crew: 690 },
@@ -501,21 +509,44 @@
                 { name: "Aigle", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "Achille", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "Berwick", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "Algésiras", type: "Ship of the Line", guns: 74, crew: 640 }
+                { name: "Algésiras", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Héros", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Pluton", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Swiftsure", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Argonaute", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Formidable", type: "Ship of the Line", guns: 80, crew: 690 },
+                { name: "Duguay-Trouin", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Mont-Blanc", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "Scipion", type: "Ship of the Line", guns: 74, crew: 640 }
             ],
             british: [
-                { name: "HMS Victory", type: "First Rate", guns: 104, flagship: true, crew: 820 },
+                { name: "HMS Victory", type: "First Rate", guns: 100, flagship: true, crew: 820 },
                 { name: "HMS Royal Sovereign", type: "First Rate", guns: 100, flagship: true, crew: 800 },
                 { name: "HMS Temeraire", type: "Ship of the Line", guns: 98, crew: 750 },
                 { name: "HMS Neptune", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Britannia", type: "First Rate", guns: 100, crew: 800 },
+                { name: "HMS Dreadnought", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Prince", type: "Ship of the Line", guns: 98, crew: 750 },
+                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, crew: 690 },
                 { name: "HMS Conqueror", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Leviathan", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Ajax", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Orion", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Minotaur", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Spartiate", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Belleisle", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Mars", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Bellerophon", type: "Ship of the Line", guns: 74, crew: 640 },
                 { name: "HMS Colossus", type: "Ship of the Line", guns: 74, crew: 640 },
-                { name: "HMS Britannia", type: "First Rate", guns: 100, crew: 800 },
-                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, crew: 690 }
+                { name: "HMS Achille", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Revenge", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Swiftsure", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Defiance", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Thunderer", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Defence", type: "Ship of the Line", guns: 74, crew: 640 },
+                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Africa", type: "Ship of the Line", guns: 64, crew: 520 },
+                { name: "HMS Polyphemus", type: "Ship of the Line", guns: 64, crew: 520 }
             ]
         };
         

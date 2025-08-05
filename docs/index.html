@@ -380,7 +380,7 @@
             <div id="casualties">Ships lost: 0</div>
             <div id="time">Time: 06:00 AM</div>
             <div id="weather">Wind: Light SW breeze, 10 knots</div>
-            <div id="coordinates">Battle Zone: 36°18'N, 6°15'W</div>
+                            <div id="coordinates">Battle Zone: 36°11'N, 6°02'W (Off Cape Trafalgar)</div>
         </div>
         
         <div class="legend">
@@ -435,8 +435,8 @@
             audioContext, soundEnabled = true, audioInitialized = false, 
             isMobile = false, audioUnlocked = false;
         
-        // Battle coordinates (off Cape Trafalgar)
-        const BATTLE_COORDS = [-6.2553, 36.2930]; // [longitude, latitude] for OpenLayers
+        // Battle coordinates (off Cape Trafalgar) - Historical location in international waters
+        const BATTLE_COORDS = [-6.033, 36.183]; // [longitude, latitude] for OpenLayers - Accurately off Cape Trafalgar
         
         // Home ports - moved to sea positions near the actual ports
         const HOME_PORTS = {
@@ -450,18 +450,18 @@
             spanish: [
                 [-6.3420, 36.4897], // Start: Cadiz Bay
                 [-6.3120, 36.3497], // Southwest of Cadiz
-                [-6.2853, 36.2930]  // Battle location
+                [-6.033, 36.183]    // Battle location (corrected coordinates)
             ],
             french: [
                 [5.2898, 43.2565],   // Start: Toulon Harbor
-                [4.8000, 42.8000],   // Southwest of Toulon
-                [3.5000, 42.0000],   // West of Corsica
-                [2.0000, 41.2000],   // East of Balearic Islands
-                [0.5000, 40.0000],   // East of Valencia
-                [-1.0000, 39.0000],  // Southeast of Spanish coast
-                [-3.0000, 37.5000],  // South of Andalusia
-                [-5.0000, 36.8000],  // Southwest approach
-                [-6.2853, 36.2930]   // Battle location
+                [4.8000, 42.8000],   // Southwest of Toulon, staying in Mediterranean
+                [3.5000, 42.0000],   // West of Corsica, in open waters
+                [1.5000, 41.5000],   // East of Balearic Islands, in deep water
+                [-0.5000, 40.5000],  // Mediterranean waters, east of Spanish coast
+                [-2.5000, 39.5000],  // Mediterranean waters, southeast of Spanish coast
+                [-4.0000, 38.0000],  // Atlantic waters, south of Portuguese coast
+                [-5.5000, 37.0000],  // Atlantic approach, southwest of Portugal
+                [-6.033, 36.183]     // Battle location (corrected coordinates, off Cape Trafalgar)
             ],
             british: [
                 [-1.0512, 50.7684],  // Start: Spithead
@@ -473,7 +473,7 @@
                 [-7.5000, 40.0000],  // West of Portugal
                 [-7.0000, 38.0000],  // Southwest of Portugal
                 [-6.5000, 37.0000],  // Approach to Gibraltar
-                [-6.2853, 36.2930]   // Battle location
+                [-6.033, 36.183]     // Battle location (corrected coordinates, off Cape Trafalgar)
             ]
         };
         

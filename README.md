@@ -15,7 +15,7 @@ An interactive D3.js simulation of the historic Battle of Trafalgar (October 21,
 ### Historical Accuracy
 - **60 Ships Total**: Based on actual fleet compositions at Trafalgar (27 British, 18 French, 15 Spanish)
 - **San Ildefonso Focus**: 74-gun Spanish ship of the line with historically accurate movements and combat role
-- **Nelson's Tactics**: British ships attack in two perpendicular columns breaking the Franco-Spanish line
+- **Nelson's Tactics**: Historically accurate two-column attack formation - Nelson's windward column and Collingwood's leeward column breaking the Franco-Spanish line of battle
 - **Cape Trafalgar**: Accurate coastline representation of the Spanish coast
 
 ### Battle Mechanics

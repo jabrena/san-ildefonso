@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Battle of Trafalgar - Historical Naval Battle Simulation</title>
     
-    <!-- Google Maps API -->
-    <script async defer 
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD5Q6XfXpLvGz8zK3Xb1HwHfGhKvQDqb2M&callback=initMap&libraries=geometry">
-    </script>
+    <!-- OpenLayers CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v8.2.0/ol.css" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v8.2.0/dist/ol.js"></script>
     
     <!-- D3.js for ship animations -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -330,6 +329,38 @@
                 stroke-dashoffset: -15;
             }
         }
+        
+        /* Custom marker styles */
+        .marker-battle {
+            width: 30px;
+            height: 30px;
+            background: #ff4444;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .marker-port {
+            width: 24px;
+            height: 24px;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .marker-spanish { background: #C41E3A; }
+        .marker-french { background: #0055A4; }
+        .marker-british { background: #012169; }
     </style>
 </head>
 <body>
@@ -398,27 +429,20 @@
 
     <script>
         // Global variables
-        let map, battleSvg, ships = [], cannonFires = [], 
+        let map, view, battleSvg, ships = [], cannonFires = [], 
             battleStarted = false, battlePaused = false, journeyStarted = false,
             battleTime = 0, casualties = 0, battleSpeed = 1,
             audioContext, soundEnabled = true, audioInitialized = false, 
             isMobile = false, audioUnlocked = false;
         
-        // Audio files for realistic cannon sounds
-        const audioFiles = {
-            cannon1: 'data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAADAAABtQC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7///////////////////////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4zNQAAAAAAAAAAAAAAACQCiAUAAAAAAAAAAbVpD0QlAAAAAAAAAAAAAAAAAAAA//uQxAAABUgNdPagAAgAAA0gAAABAQIHAAMAAAAtAgAAANUNUPIPp8nfvKJv4AAiKxd/8L+/CCBd5r4TmPZoJY0/vOjZAhWJl0u2s31CCeShASYtgHBFAEcGfxIx4mDbH7bFOu8vd1w/DYKFhPdh9e5s6cADhNAK8UOjt1Ql1Guw+3Xno1PtOJtXTdOJJ5OdjW1P58WoFhEQnp4QfzaC0AiqsAQnCJw83Xc6bF8JUv3GBRr5qdXQqVWJ5Odjbd2fn4tfxSJe3iVDt0Q+DUIACjSO1AFD7/J8AAIC9QqrBxrC4/kIwNKxsebg6w4A/0ZJCjIq+gVoGkIyNSEjqIRhGDFvOyQMoF5CRAMHGJyYNVVoALc6xX4VDExTDGMIAMDqvQRBHQIIVQCrAq8qAlZVf5SJzwZR9FNVCOAh8BCELqAoZzMM6wVnWNZFG55KJokwEcAAtIIwVQowP4AgcKBJIHhQQPRUAoAfAGCqQMF7BgTqAIWTEwWcAYK2DAqgFAvYJAmgCOLAWP4AWDEQN2DAWP4Cg5MIggYKAmAJgGgaBQWYCBZAhCJgEHaAAWwKBYAID2AQMWCgQMEAmAJgMF2AgSsBAxYJAkgGgWBgCBZAJFrBIIwAAswGgWBgKwIBJgFgWAYKwIAh4UhQGQgKwHhCGQsE8AYgm0DgeAAMWDwR6hMHggRz9CEQAHCgADSAIBFtAogn0FAAA==',
-            cannon2: 'data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAADAAABtQC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7///////////////////////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4zNQAAAAAAAAAAAAAAACQCiAUAAAAAAAAAAbVpD0QlAAAAAAAAAAAAAAAAAAAA//uQxAAABUgNdPagAAgAAA0gAAABAQIHAAMAAAAtAgAAANUNUPIPp8nfvKJv4AAiKxd/8L+/CCBd5r4TmPZoJY0/vOjZAhWJl0u2s31CCeShASYtgHBFAEcGfxIx4mDbH7bFOu8vd1w/DYKFhPdh9e5s6cADhNAK8UOjt1Ql1Guw+3Xno1PtOJtXTdOJJ5OdjW1P58WoFhEQnp4QfzaC0AiqsAQnCJw83Xc6bF8JUv3GBRr5qdXQqVWJ5Odjbd2fn4tfxSJe3iVDt0Q+DUIACjSO1AFD7/J8AAIC9QqrBxrC4/kIwNKxsebg6w4A/0ZJCjIq+gVoGkIyNSEjqIRhGDFvOyQMoF5CRAMHGJyYNVVoALc6xX4VDExTDGMIAMDqvQRBHQIIVQCrAq8qAlZVf5SJzwZR9FNVCOAh8BCELqAoZzMM6wVnWNZFG55KJokwEcAAtIIwVQowP4AgcKBJIHhQQPRUAoAfAGCqQMF7BgTqAIWTEwWcAYK2DAqgFAvYJAmgCOLAWP4AWDEQN2DAWP4Cg5MIggYKAmAJgGgaBQWYCBZAhCJgEHaAAWwKBYAID2AQMWCgQMEAmAJgMF2AgSsBAxYJAkgGgWBgCBZAJFrBIIwAAswGgWBgKwIBJgFgWAYKwIAh4UhQGQgKwHhCGQsE8AYgm0DgeAAMWDwR6hMHggRz9CEQAHCgADSAIBFtAogn0FAAA==',
-            explosion: 'data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAADAAABtQC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7///////////////////////////////////////////////////////////////////////////////////AAAAAExhdmM1OC4zNQAAAAAAAAAAAAAAACQCiAUAAAAAAAAAAbVpD0QlAAAAAAAAAAAAAAAAAAAA//uQxAAABUgNdPagAAgAAA0gAAABAQIHAAMAAAAtAgAAANUNUPIPp8nfvKJv4AAiKxd/8L+/CCBd5r4TmPZoJY0/vOjZAhWJl0u2s31CCeShASYtgHBFAEcGfxIx4mDbH7bFOu8vd1w/DYKFhPdh9e5s6cADhNAK8UOjt1Ql1Guw+3Xno1PtOJtXTdOJJ5OdjW1P58WoFhEQnp4QfzaC0AiqsAQnCJw83Xc6bF8JUv3GBRr5qdXQqVWJ5Odjbd2fn4tfxSJe3iVDt0Q+DUIACjSO1AFD7/J8AAIC9QqrBxrC4/kIwNKxsebg6w4A/0ZJCjIq+gVoGkIyNSEjqIRhGDFvOyQMoF5CRAMHGJyYNVVoALc6xX4VDExTDGMIAMDqvQRBHQIIVQCrAq8qAlZVf5SJzwZR9FNVCOAh8BCELqAoZzMM6wVnWNZFG55KJokwEcAAtIIwVQowP4AgcKBJIHhQQPRUAoAfAGCqQMF7BgTqAIWTEwWcAYK2DAqgFAvYJAmgCOLAWP4AWDEQN2DAWP4Cg5MIggYKAmAJgGgaBQWYCBZAhCJgEHaAAWwKBYAID2AQMWCgQMEAmAJgMF2AgSsBAxYJAkgGgWBgCBZAJFrBIIwAAswGgWBgKwIBJgFgWAYKwIAh4UhQGQgKwHhCGQsE8AYgm0DgeAAMWDwR6hMHggRz9CEQAHCgADSAIBFtAogn0FAAA=='
-        };
-        
         // Battle coordinates (off Cape Trafalgar)
-        const BATTLE_COORDS = { lat: 36.2930, lng: -6.2553 };
+        const BATTLE_COORDS = [-6.2553, 36.2930]; // [longitude, latitude] for OpenLayers
         
         // Home ports
         const HOME_PORTS = {
-            spanish: { lat: 36.5297, lng: -6.2920, name: "Cadiz" }, // Cadiz, Spain
-            french: { lat: 43.2965, lng: 5.3698, name: "Toulon" }, // Toulon, France  
-            british: { lat: 50.7984, lng: -1.1112, name: "Portsmouth" } // Portsmouth, England
+            spanish: { coords: [-6.2920, 36.5297], name: "Cadiz" }, // Cadiz, Spain
+            french: { coords: [5.3698, 43.2965], name: "Toulon" }, // Toulon, France  
+            british: { coords: [-1.1112, 50.7984], name: "Portsmouth" } // Portsmouth, England
         };
         
         // Historical ship data
@@ -470,73 +494,126 @@
                       (navigator.maxTouchPoints > 0);
         }
         
-        // Initialize Google Maps
+        // Initialize OpenLayers Map
         function initMap() {
-            map = new google.maps.Map(document.getElementById('map'), {
+            // Create view centered on battle location
+            view = new ol.View({
+                center: ol.proj.fromLonLat(BATTLE_COORDS),
                 zoom: 8,
-                center: BATTLE_COORDS,
-                mapTypeId: google.maps.MapTypeId.SATELLITE,
-                disableDefaultUI: true,
-                gestureHandling: isMobile ? 'greedy' : 'cooperative',
-                styles: [
-                    {
-                        featureType: "water",
-                        elementType: "geometry",
-                        stylers: [{ color: "#0066cc" }]
-                    },
-                    {
-                        featureType: "landscape",
-                        elementType: "geometry",
-                        stylers: [{ color: "#8fbc8f" }]
-                    }
-                ]
+                minZoom: 3,
+                maxZoom: 18
+            });
+            
+            // Create satellite/terrain layer
+            const satelliteLayer = new ol.layer.Tile({
+                source: new ol.source.XYZ({
+                    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    attributions: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                })
+            });
+            
+            // Create vector layer for markers
+            const vectorSource = new ol.source.Vector();
+            const vectorLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: function(feature) {
+                    return new ol.style.Style({
+                        image: new ol.style.Circle({
+                            radius: feature.get('type') === 'battle' ? 15 : 12,
+                            fill: new ol.style.Fill({
+                                color: feature.get('color')
+                            }),
+                            stroke: new ol.style.Stroke({
+                                color: '#fff',
+                                width: 2
+                            })
+                        }),
+                        text: new ol.style.Text({
+                            text: feature.get('symbol'),
+                            fill: new ol.style.Fill({
+                                color: '#fff'
+                            }),
+                            font: 'bold 14px Arial'
+                        })
+                    });
+                }
+            });
+            
+            // Create map
+            map = new ol.Map({
+                target: 'map',
+                layers: [satelliteLayer, vectorLayer],
+                view: view,
+                interactions: ol.interaction.defaults({
+                    doubleClickZoom: false,
+                    keyboard: false,
+                    mouseWheelZoom: !isMobile,
+                    pinchZoom: isMobile,
+                    dragPan: true
+                }),
+                controls: [] // Remove default controls
             });
             
             // Add historical markers
-            addHistoricalMarkers();
+            addHistoricalMarkers(vectorSource);
             
             // Initialize battle overlay
             initBattleOverlay();
+            
+            // Add map event listeners
+            addMapEventListeners();
             
             // Hide loading screen
             document.getElementById('loadingScreen').style.display = 'none';
         }
         
-        function addHistoricalMarkers() {
+        function addHistoricalMarkers(vectorSource) {
             // Battle location marker
-            new google.maps.Marker({
-                position: BATTLE_COORDS,
-                map: map,
-                title: "Battle of Trafalgar - October 21, 1805",
-                icon: {
-                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                        <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="20" cy="20" r="18" fill="#ff4444" stroke="#fff" stroke-width="2"/>
-                            <text x="20" y="26" text-anchor="middle" fill="white" font-size="16" font-weight="bold">⚔</text>
-                        </svg>
-                    `),
-                    scaledSize: new google.maps.Size(40, 40)
-                }
+            const battleFeature = new ol.Feature({
+                geometry: new ol.geom.Point(ol.proj.fromLonLat(BATTLE_COORDS)),
+                type: 'battle',
+                color: '#ff4444',
+                symbol: '⚔',
+                name: 'Battle of Trafalgar - October 21, 1805'
             });
+            vectorSource.addFeature(battleFeature);
             
             // Home port markers
             Object.entries(HOME_PORTS).forEach(([fleet, port]) => {
                 const color = fleet === 'spanish' ? '#C41E3A' : fleet === 'french' ? '#0055A4' : '#012169';
-                new google.maps.Marker({
-                    position: port,
-                    map: map,
-                    title: `${port.name} - ${fleet.charAt(0).toUpperCase() + fleet.slice(1)} Home Port`,
-                    icon: {
-                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                            <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="15" cy="15" r="12" fill="${color}" stroke="#fff" stroke-width="2"/>
-                                <text x="15" y="20" text-anchor="middle" fill="white" font-size="12" font-weight="bold">⚓</text>
-                            </svg>
-                        `),
-                        scaledSize: new google.maps.Size(30, 30)
-                    }
+                const portFeature = new ol.Feature({
+                    geometry: new ol.geom.Point(ol.proj.fromLonLat(port.coords)),
+                    type: 'port',
+                    color: color,
+                    symbol: '⚓',
+                    name: `${port.name} - ${fleet.charAt(0).toUpperCase() + fleet.slice(1)} Home Port`
                 });
+                vectorSource.addFeature(portFeature);
             });
+        }
+        
+        function addMapEventListeners() {
+            // Update ship positions when map moves or zooms
+            map.on('moveend', updateShipPositions);
+            map.on('postrender', updateShipPositions);
+            
+            // Handle mobile touch controls
+            if (isMobile) {
+                let lastTouchTime = 0;
+                map.getViewport().addEventListener('touchend', function(e) {
+                    const now = Date.now();
+                    if (now - lastTouchTime < 300) {
+                        // Double tap to zoom
+                        const coordinate = map.getEventCoordinate(e.changedTouches[0]);
+                        view.animate({
+                            center: coordinate,
+                            zoom: view.getZoom() + 1,
+                            duration: 300
+                        });
+                    }
+                    lastTouchTime = now;
+                });
+            }
         }
         
         function initBattleOverlay() {
@@ -545,38 +622,6 @@
             battleSvg = d3.select("#battle-svg");
             prepareShips();
             updateBattleStatus();
-            
-            // Add touch/mouse controls for mobile
-            if (isMobile) {
-                addTouchControls();
-            }
-        }
-        
-        function addTouchControls() {
-            let isPanning = false;
-            let startCenter = null;
-            
-            // Pan controls
-            map.addListener('dragstart', () => {
-                isPanning = true;
-            });
-            
-            map.addListener('dragend', () => {
-                isPanning = false;
-            });
-            
-            // Zoom controls with gestures
-            map.addListener('zoom_changed', () => {
-                updateShipScale();
-            });
-        }
-        
-        function updateShipScale() {
-            const zoom = map.getZoom();
-            const scale = Math.max(0.5, Math.min(2, zoom / 8));
-            battleSvg.selectAll('.ship').attr('transform', d => 
-                `translate(${d.screenX || 0}, ${d.screenY || 0}) scale(${scale}) rotate(${d.angle || 0})`
-            );
         }
         
         // Audio system initialization
@@ -619,26 +664,6 @@
             
             document.addEventListener('touchstart', unlockAudio, false);
             document.addEventListener('click', unlockAudio, false);
-        }
-        
-        function playAudioFile(audioKey, volume = 0.3) {
-            if (!soundEnabled || !audioContext || !audioUnlocked) return;
-            
-            try {
-                if (audioContext.state === 'suspended') {
-                    audioContext.resume();
-                }
-                
-                // For this demo, we'll use Web Audio API to generate sounds
-                // In production, you'd load actual MP3 files
-                if (audioKey === 'cannon') {
-                    playCannonSound();
-                } else if (audioKey === 'explosion') {
-                    playExplosionSound();
-                }
-            } catch (e) {
-                console.warn("Error playing audio:", e);
-            }
         }
         
         function playCannonSound() {
@@ -721,7 +746,7 @@
                 fleetData[fleet].forEach((shipData, index) => {
                     // Position ships around their home ports
                     const angle = (index / fleetData[fleet].length) * 2 * Math.PI;
-                    const radius = 0.02; // Small radius in lat/lng
+                    const radius = 0.02; // Small radius in degrees
                     
                     ships.push({
                         id: id++,
@@ -735,9 +760,11 @@
                         lastFired: 0,
                         morale: 100,
                         damage: 0,
-                        // Starting position at home port
-                        lat: homePort.lat + Math.cos(angle) * radius,
-                        lng: homePort.lng + Math.sin(angle) * radius,
+                        // Starting position at home port (longitude, latitude)
+                        coords: [
+                            homePort.coords[0] + Math.cos(angle) * radius,
+                            homePort.coords[1] + Math.sin(angle) * radius
+                        ],
                         // Journey state
                         journeyProgress: 0,
                         atBattle: false
@@ -817,35 +844,15 @@
         
         function updateShipPositions() {
             ships.forEach(ship => {
-                const point = latLngToPoint(ship.lat, ship.lng);
-                if (point) {
-                    ship.screenX = point.x;
-                    ship.screenY = point.y;
+                const pixel = map.getPixelFromCoordinate(ol.proj.fromLonLat(ship.coords));
+                if (pixel) {
+                    ship.screenX = pixel[0];
+                    ship.screenY = pixel[1];
                 }
             });
             
             battleSvg.selectAll('.ship')
                 .attr('transform', d => `translate(${d.screenX || 0}, ${d.screenY || 0}) rotate(${d.angle || 0})`);
-        }
-        
-        function latLngToPoint(lat, lng) {
-            const projection = map.getProjection();
-            if (projection) {
-                const point = projection.fromLatLngToPoint(new google.maps.LatLng(lat, lng));
-                const scale = Math.pow(2, map.getZoom());
-                const worldPoint = new google.maps.Point(point.x * scale, point.y * scale);
-                const topLeft = map.getBounds().getNorthEast();
-                const bottomRight = map.getBounds().getSouthWest();
-                const topLeftPoint = projection.fromLatLngToPoint(topLeft);
-                const bottomRightPoint = projection.fromLatLngToPoint(bottomRight);
-                const topLeftWorldPoint = new google.maps.Point(topLeftPoint.x * scale, topLeftPoint.y * scale);
-                
-                return {
-                    x: worldPoint.x - topLeftWorldPoint.x,
-                    y: worldPoint.y - topLeftWorldPoint.y
-                };
-            }
-            return null;
         }
         
         // Control functions
@@ -872,17 +879,19 @@
                 
                 ships.forEach(ship => {
                     const homePort = HOME_PORTS[ship.fleet];
-                    const latDiff = BATTLE_COORDS.lat - homePort.lat;
-                    const lngDiff = BATTLE_COORDS.lng - homePort.lng;
+                    const lngDiff = BATTLE_COORDS[0] - homePort.coords[0];
+                    const latDiff = BATTLE_COORDS[1] - homePort.coords[1];
                     
                     // Add some formation positioning
-                    const formationOffset = {
-                        lat: (Math.random() - 0.5) * 0.01,
-                        lng: (Math.random() - 0.5) * 0.01
-                    };
+                    const formationOffset = [
+                        (Math.random() - 0.5) * 0.01,
+                        (Math.random() - 0.5) * 0.01
+                    ];
                     
-                    ship.lat = homePort.lat + (latDiff * progress) + formationOffset.lat;
-                    ship.lng = homePort.lng + (lngDiff * progress) + formationOffset.lng;
+                    ship.coords = [
+                        homePort.coords[0] + (lngDiff * progress) + formationOffset[0],
+                        homePort.coords[1] + (latDiff * progress) + formationOffset[1]
+                    ];
                     
                     // Update angle based on movement direction
                     ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI);
@@ -947,8 +956,11 @@
             updateBattleStatus("Battle commenced! Nelson's attack begins!");
             
             // Focus map on battle area
-            map.setCenter(BATTLE_COORDS);
-            map.setZoom(12);
+            view.animate({
+                center: ol.proj.fromLonLat(BATTLE_COORDS),
+                zoom: 12,
+                duration: 1000
+            });
             
             simulateBattle();
         }
@@ -980,8 +992,10 @@
                 ship.target = null;
                 ship.morale = 100;
                 ship.damage = 0;
-                ship.lat = homePort.lat + Math.cos(angle) * radius;
-                ship.lng = homePort.lng + Math.sin(angle) * radius;
+                ship.coords = [
+                    homePort.coords[0] + Math.cos(angle) * radius,
+                    homePort.coords[1] + Math.sin(angle) * radius
+                ];
                 ship.angle = 0;
                 ship.atBattle = false;
             });
@@ -1001,8 +1015,11 @@
             updateBattleStatus("Ships gathering at their home ports...");
             
             // Reset map view
-            map.setCenter(BATTLE_COORDS);
-            map.setZoom(8);
+            view.animate({
+                center: ol.proj.fromLonLat(BATTLE_COORDS),
+                zoom: 8,
+                duration: 1000
+            });
         }
         
         function toggleSpeed() {
@@ -1046,8 +1063,11 @@
         }
         
         function focusOnShip(ship) {
-            map.setCenter({ lat: ship.lat, lng: ship.lng });
-            map.setZoom(14);
+            view.animate({
+                center: ol.proj.fromLonLat(ship.coords),
+                zoom: 14,
+                duration: 1000
+            });
             
             // Highlight ship
             battleSvg.selectAll('.ship').style('opacity', 0.5);
@@ -1055,18 +1075,27 @@
             
             setTimeout(() => {
                 battleSvg.selectAll('.ship').style('opacity', 1);
-                map.setZoom(12);
+                view.animate({
+                    zoom: 12,
+                    duration: 1000
+                });
             }, 3000);
         }
         
         function zoomIn() {
-            const zoom = map.getZoom();
-            map.setZoom(Math.min(zoom + 1, 20));
+            const currentZoom = view.getZoom();
+            view.animate({
+                zoom: Math.min(currentZoom + 1, 18),
+                duration: 300
+            });
         }
         
         function zoomOut() {
-            const zoom = map.getZoom();
-            map.setZoom(Math.max(zoom - 1, 3));
+            const currentZoom = view.getZoom();
+            view.animate({
+                zoom: Math.max(currentZoom - 1, 3),
+                duration: 300
+            });
         }
         
         function showTooltip(event, ship) {
@@ -1106,33 +1135,34 @@
         }
         
         function moveShipsIntoBattle() {
-            const centerLat = BATTLE_COORDS.lat;
-            const centerLng = BATTLE_COORDS.lng;
-            
             ships.forEach(ship => {
                 if (ship.sunk) return;
                 
                 if (ship.fleet === 'british') {
                     // British ships attack in two columns
-                    const targetLat = centerLat + (Math.random() - 0.5) * 0.02;
-                    const targetLng = centerLng + 0.01;
+                    const targetCoords = [
+                        BATTLE_COORDS[0] + 0.01,
+                        BATTLE_COORDS[1] + (Math.random() - 0.5) * 0.02
+                    ];
                     
-                    const latDiff = targetLat - ship.lat;
-                    const lngDiff = targetLng - ship.lng;
+                    const lngDiff = targetCoords[0] - ship.coords[0];
+                    const latDiff = targetCoords[1] - ship.coords[1];
                     
-                    ship.lat += latDiff * 0.001 * battleSpeed;
-                    ship.lng += lngDiff * 0.001 * battleSpeed;
+                    ship.coords[0] += lngDiff * 0.001 * battleSpeed;
+                    ship.coords[1] += latDiff * 0.001 * battleSpeed;
                     ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 270;
                 } else {
                     // Franco-Spanish line formation
-                    const targetLat = centerLat + (Math.random() - 0.5) * 0.01;
-                    const targetLng = centerLng - 0.01;
+                    const targetCoords = [
+                        BATTLE_COORDS[0] - 0.01,
+                        BATTLE_COORDS[1] + (Math.random() - 0.5) * 0.01
+                    ];
                     
-                    const latDiff = targetLat - ship.lat;
-                    const lngDiff = targetLng - ship.lng;
+                    const lngDiff = targetCoords[0] - ship.coords[0];
+                    const latDiff = targetCoords[1] - ship.coords[1];
                     
-                    ship.lat += latDiff * 0.0005 * battleSpeed;
-                    ship.lng += lngDiff * 0.0005 * battleSpeed;
+                    ship.coords[0] += lngDiff * 0.0005 * battleSpeed;
+                    ship.coords[1] += latDiff * 0.0005 * battleSpeed;
                     ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
                 }
             });
@@ -1148,8 +1178,8 @@
                 const enemies = ships.filter(s => 
                     !s.sunk && 
                     s.fleet !== ship.fleet && 
-                    Math.abs(s.lat - ship.lat) < 0.008 && 
-                    Math.abs(s.lng - ship.lng) < 0.008
+                    Math.abs(s.coords[0] - ship.coords[0]) < 0.008 && 
+                    Math.abs(s.coords[1] - ship.coords[1]) < 0.008
                 );
                 
                 if (enemies.length > 0) {
@@ -1158,8 +1188,8 @@
                     ship.target = target;
                     
                     const distance = Math.hypot(
-                        (target.lat - ship.lat) * 111000,
-                        (target.lng - ship.lng) * 111000 * Math.cos(ship.lat * Math.PI / 180)
+                        (target.coords[0] - ship.coords[0]) * 111000 * Math.cos(ship.coords[1] * Math.PI / 180),
+                        (target.coords[1] - ship.coords[1]) * 111000
                     );
                     
                     const reloadTime = 3000 - (ship.guns * 10); // Faster reload for more guns
@@ -1177,14 +1207,14 @@
         
         function fireCannons(attacker, target) {
             const distance = Math.hypot(
-                (target.lat - attacker.lat) * 111000,
-                (target.lng - attacker.lng) * 111000 * Math.cos(attacker.lat * Math.PI / 180)
+                (target.coords[0] - attacker.coords[0]) * 111000 * Math.cos(attacker.coords[1] * Math.PI / 180),
+                (target.coords[1] - attacker.coords[1]) * 111000
             );
             
             const accuracy = Math.max(0.2, 1 - (distance / 600)) * (attacker.morale / 100);
             
             // Play cannon sound
-            playAudioFile('cannon');
+            if (soundEnabled) playCannonSound();
             
             // Create visual effect
             createCannonEffect(attacker, target);
@@ -1214,17 +1244,17 @@
         }
         
         function createCannonEffect(attacker, target) {
-            const attackerPoint = latLngToPoint(attacker.lat, attacker.lng);
-            const targetPoint = latLngToPoint(target.lat, target.lng);
+            const attackerPixel = map.getPixelFromCoordinate(ol.proj.fromLonLat(attacker.coords));
+            const targetPixel = map.getPixelFromCoordinate(ol.proj.fromLonLat(target.coords));
             
-            if (!attackerPoint || !targetPoint) return;
+            if (!attackerPixel || !targetPixel) return;
             
             const effectGroup = battleSvg.append('g').attr('class', 'cannon-fire');
             
             // Muzzle flash
             effectGroup.append('circle')
-                .attr('cx', attackerPoint.x)
-                .attr('cy', attackerPoint.y)
+                .attr('cx', attackerPixel[0])
+                .attr('cy', attackerPixel[1])
                 .attr('r', 3)
                 .attr('class', 'muzzle-flash')
                 .transition()
@@ -1235,20 +1265,20 @@
             
             // Cannonball
             effectGroup.append('circle')
-                .attr('cx', attackerPoint.x)
-                .attr('cy', attackerPoint.y)
+                .attr('cx', attackerPixel[0])
+                .attr('cy', attackerPixel[1])
                 .attr('r', 2)
                 .attr('class', 'cannonball')
                 .transition()
                 .duration(400)
-                .attr('cx', targetPoint.x + (Math.random() - 0.5) * 30)
-                .attr('cy', targetPoint.y + (Math.random() - 0.5) * 30)
+                .attr('cx', targetPixel[0] + (Math.random() - 0.5) * 30)
+                .attr('cy', targetPixel[1] + (Math.random() - 0.5) * 30)
                 .remove();
             
             // Smoke
             effectGroup.append('ellipse')
-                .attr('cx', attackerPoint.x)
-                .attr('cy', attackerPoint.y)
+                .attr('cx', attackerPixel[0])
+                .attr('cy', attackerPixel[1])
                 .attr('rx', 0)
                 .attr('ry', 0)
                 .attr('class', 'smoke')
@@ -1264,17 +1294,17 @@
             ship.sunk = true;
             casualties++;
             
-            playAudioFile('explosion');
+            if (soundEnabled) playExplosionSound();
             
-            const shipPoint = latLngToPoint(ship.lat, ship.lng);
-            if (!shipPoint) return;
+            const shipPixel = map.getPixelFromCoordinate(ol.proj.fromLonLat(ship.coords));
+            if (!shipPixel) return;
             
             // Explosion effect
             const explosion = battleSvg.append('g').attr('class', 'explosion');
             
             explosion.append('circle')
-                .attr('cx', shipPoint.x)
-                .attr('cy', shipPoint.y)
+                .attr('cx', shipPixel[0])
+                .attr('cy', shipPixel[1])
                 .attr('r', 0)
                 .attr('fill', '#FF4500')
                 .transition()
@@ -1286,15 +1316,15 @@
             // Debris
             for (let i = 0; i < 6; i++) {
                 explosion.append('rect')
-                    .attr('x', shipPoint.x)
-                    .attr('y', shipPoint.y)
+                    .attr('x', shipPixel[0])
+                    .attr('y', shipPixel[1])
                     .attr('width', 2)
                     .attr('height', 6)
                     .attr('fill', '#8B4513')
                     .transition()
                     .duration(1500)
-                    .attr('x', shipPoint.x + (Math.random() - 0.5) * 60)
-                    .attr('y', shipPoint.y + Math.random() * 40)
+                    .attr('x', shipPixel[0] + (Math.random() - 0.5) * 60)
+                    .attr('y', shipPixel[1] + Math.random() * 40)
                     .style('opacity', 0)
                     .remove();
             }
@@ -1357,20 +1387,13 @@
             }
         }
         
-        // Map event listeners
-        google.maps.event.addDomListener(window, 'load', () => {
-            // Update ship positions when map moves
-            map.addListener('bounds_changed', () => {
-                setTimeout(updateShipPositions, 100);
-            });
-            
-            map.addListener('zoom_changed', () => {
-                updateShipScale();
-            });
-        });
-        
         // Initialize when page loads
         detectMobile();
+        
+        // Start the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+        });
     </script>
 </body>
 </html>

@@ -163,6 +163,7 @@
             <button class="control-btn" onclick="resetBattle()">Reset</button>
             <button class="control-btn" onclick="focusOnSanIldefonso()">Focus San Ildefonso</button>
             <button class="control-btn" onclick="toggleSpeed()">Speed: 1x</button>
+            <button class="control-btn" onclick="toggleSound()">Sound: ON</button>
         </div>
         
         <div class="ship-tooltip" id="tooltip"></div>
@@ -174,10 +175,184 @@
         // Global variables
         let svg, simulation, ships = [], cannonFires = [], 
             battleStarted = false, battlePaused = false, 
-            battleTime = 0, casualties = 0, battleSpeed = 1;
+            battleTime = 0, casualties = 0, battleSpeed = 1,
+            audioContext, cannonSounds = [], soundEnabled = true;
         
         const width = window.innerWidth;
         const height = window.innerHeight;
+        
+        // Audio initialization and sound generation
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                generateCannonSounds();
+            } catch (e) {
+                console.warn("Audio not supported, continuing without sound effects");
+                soundEnabled = false;
+            }
+        }
+        
+        function generateCannonSounds() {
+            // Generate multiple cannon sound variations
+            for (let i = 0; i < 5; i++) {
+                cannonSounds.push(createCannonSound());
+            }
+        }
+        
+        function createExplosionSound() {
+            if (!audioContext) return null;
+            
+            const duration = 2.5;
+            const sampleRate = audioContext.sampleRate;
+            const length = sampleRate * duration;
+            const buffer = audioContext.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            // Create massive explosion sound for ship sinking
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                let sample = 0;
+                
+                if (t < 0.15) {
+                    // Massive initial blast
+                    const attack = Math.exp(-t * 20);
+                    sample += attack * (Math.random() * 2 - 1) * 1.0; // Loud white noise
+                    sample += attack * Math.sin(2 * Math.PI * 150 * t) * 0.5; // Deep boom
+                    sample += attack * Math.sin(2 * Math.PI * 600 * t) * 0.3; // Sharp crack
+                } else if (t < 0.8) {
+                    // Extended rumbling and debris
+                    const rumble = Math.exp(-(t - 0.15) * 6);
+                    sample += rumble * Math.sin(2 * Math.PI * 40 * t) * 0.6;
+                    sample += rumble * Math.sin(2 * Math.PI * 80 * t) * 0.4;
+                    sample += rumble * (Math.random() * 2 - 1) * 0.2; // Debris noise
+                } else {
+                    // Long echo and settling
+                    const echo = Math.exp(-(t - 0.8) * 3);
+                    sample += echo * Math.sin(2 * Math.PI * 60 * t) * 0.3;
+                    sample += echo * (Math.random() * 2 - 1) * 0.08;
+                }
+                
+                // Apply overall envelope
+                const envelope = Math.exp(-t * 1.5);
+                data[i] = sample * envelope;
+            }
+            
+            return buffer;
+        }
+        
+        function playExplosionSound() {
+            if (!soundEnabled || !audioContext) return;
+            
+            try {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                const source = audioContext.createBufferSource();
+                const gainNode = audioContext.createGain();
+                
+                source.buffer = createExplosionSound();
+                gainNode.gain.value = 0.8; // Loud explosion
+                
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                source.start();
+            } catch (e) {
+                console.warn("Error playing explosion sound:", e);
+            }
+        }
+        
+        function createCannonSound() {
+            if (!audioContext) return null;
+            
+            const duration = 1.5;
+            const sampleRate = audioContext.sampleRate;
+            const length = sampleRate * duration;
+            const buffer = audioContext.createBuffer(1, length, sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            // Create realistic cannon sound with multiple phases
+            for (let i = 0; i < length; i++) {
+                const t = i / sampleRate;
+                let sample = 0;
+                
+                if (t < 0.1) {
+                    // Initial explosion - sharp attack with high frequency components
+                    const attack = Math.exp(-t * 50);
+                    sample += attack * (Math.random() * 2 - 1) * 0.8; // White noise burst
+                    sample += attack * Math.sin(2 * Math.PI * 200 * t) * 0.3; // Low boom
+                    sample += attack * Math.sin(2 * Math.PI * 800 * t) * 0.2; // Mid crack
+                } else if (t < 0.4) {
+                    // Thunder rumble phase
+                    const rumble = Math.exp(-(t - 0.1) * 8);
+                    sample += rumble * Math.sin(2 * Math.PI * 60 * t) * 0.4;
+                    sample += rumble * Math.sin(2 * Math.PI * 120 * t) * 0.3;
+                    sample += rumble * (Math.random() * 2 - 1) * 0.1; // Low-level noise
+                } else {
+                    // Echo and decay
+                    const echo = Math.exp(-(t - 0.4) * 5);
+                    sample += echo * Math.sin(2 * Math.PI * 80 * t) * 0.2;
+                    sample += echo * (Math.random() * 2 - 1) * 0.05;
+                }
+                
+                // Apply overall envelope
+                const envelope = Math.exp(-t * 2);
+                data[i] = sample * envelope;
+            }
+            
+            return buffer;
+        }
+        
+        function playCannonSound(distance = 50, shipGuns = 74) {
+            if (!soundEnabled || !audioContext || cannonSounds.length === 0) return;
+            
+            try {
+                // Resume audio context if suspended (browser autoplay policy)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                const source = audioContext.createBufferSource();
+                const gainNode = audioContext.createGain();
+                const lowpassFilter = audioContext.createBiquadFilter();
+                
+                // Select random cannon sound variation
+                const soundBuffer = cannonSounds[Math.floor(Math.random() * cannonSounds.length)];
+                source.buffer = soundBuffer;
+                
+                // Calculate volume based on distance (closer = louder)
+                const maxDistance = 200;
+                const volume = Math.max(0.1, 1 - (distance / maxDistance)) * 0.6;
+                gainNode.gain.value = volume;
+                
+                // Calculate pitch variation based on ship size (larger ships = deeper sound)
+                const pitchVariation = 1 + (74 - shipGuns) * 0.002; // Slight pitch change
+                source.playbackRate.value = pitchVariation + (Math.random() - 0.5) * 0.1;
+                
+                // Apply low-pass filter for distant shots
+                lowpassFilter.type = 'lowpass';
+                const cutoffFreq = Math.max(500, 2000 - (distance * 5)); // Distant shots sound muffled
+                lowpassFilter.frequency.value = cutoffFreq;
+                lowpassFilter.Q.value = 1;
+                
+                // Connect audio nodes
+                source.connect(lowpassFilter);
+                lowpassFilter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Play the sound
+                source.start();
+            } catch (e) {
+                console.warn("Error playing cannon sound:", e);
+            }
+        }
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const button = event.target;
+            button.textContent = soundEnabled ? "Sound: ON" : "Sound: OFF";
+            button.style.background = soundEnabled ? "#8B4513" : "#555";
+        }
         
         // Historical ship data for Battle of Trafalgar
         const fleetData = {
@@ -224,6 +399,9 @@
         // Initialize the simulation
         function initSimulation() {
             svg = d3.select("#battle-simulation");
+            
+            // Initialize audio system
+            initAudio();
             
             // Create water effects
             createWaterEffects();
@@ -564,6 +742,11 @@
         // Battle control functions
         function startBattle() {
             if (!battleStarted) {
+                // Enable audio context on user interaction (browser requirement)
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
                 battleStarted = true;
                 battlePaused = false;
                 d3.select("#battle-status").text("Battle commencing - Nelson's attack begins!");
@@ -768,6 +951,9 @@
             const distance = Math.hypot(target.x - attacker.x, target.y - attacker.y);
             const accuracy = Math.max(0.3, 1 - (distance / 150)) * (attacker.morale / 100);
             
+            // Play realistic cannon sound effect
+            playCannonSound(distance, attacker.guns);
+            
             // Create cannon fire visual effect
             const fireGroup = svg.append("g").attr("class", "cannon-fire");
             
@@ -845,6 +1031,9 @@
         function sinkShip(ship) {
             ship.sunk = true;
             casualties++;
+            
+            // Play dramatic explosion sound
+            playExplosionSound();
             
             // Explosion effect
             const explosion = svg.append("g").attr("class", "explosion");

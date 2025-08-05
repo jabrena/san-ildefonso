@@ -782,6 +782,16 @@
             source.start();
         }
         
+        // Standardized formation configuration for all fleets
+        // This ensures consistent formations across Spanish, French, and British fleets
+        // Applied to: initial positioning, movement formations, battle formations, and combat ranges
+        const FORMATION_CONFIG = {
+            radius: 0.015,              // Base radius for formation spread
+            radiusVariation: 0.6,       // Variation factor (0.7 + random * 0.6)
+            baseVariation: 0.7,         // Base variation factor
+            pattern: 'circular'         // Formation pattern type
+        };
+        
         function prepareShips() {
             ships = [];
             let id = 0;
@@ -789,12 +799,12 @@
             Object.keys(fleetData).forEach(fleet => {
                 const homePort = HOME_PORTS[fleet];
                 fleetData[fleet].forEach((shipData, index) => {
-                    // Position ships in formation around their home anchorages (in the sea)
+                    // Position ships in standardized formation around their home anchorages
                     const angle = (index / fleetData[fleet].length) * 2 * Math.PI;
-                    const radius = 0.015; // Smaller radius for tighter formations in harbors
                     
-                    // Add some variation to avoid perfect circles
-                    const radiusVariation = radius * (0.7 + Math.random() * 0.6);
+                    // Use standardized formation configuration for all fleets
+                    const radiusVariation = FORMATION_CONFIG.radius * 
+                        (FORMATION_CONFIG.baseVariation + Math.random() * FORMATION_CONFIG.radiusVariation);
                     
                     ships.push({
                         id: id++,
@@ -808,7 +818,7 @@
                         lastFired: 0,
                         morale: 100,
                         damage: 0,
-                        // Starting position in sea anchorage (longitude, latitude)
+                        // Starting position in standardized sea formation (longitude, latitude)
                         coords: [
                             homePort.coords[0] + Math.cos(angle) * radiusVariation,
                             homePort.coords[1] + Math.sin(angle) * radiusVariation
@@ -1009,10 +1019,12 @@
                         const lngDiff = nextWaypoint[0] - currentWaypoint[0];
                         const latDiff = nextWaypoint[1] - currentWaypoint[1];
                         
-                        // Add formation spread to prevent ships from overlapping
+                        // Add standardized formation spread to prevent ships from overlapping
                         const fleetIndex = ships.filter(s => s.fleet === ship.fleet).indexOf(ship);
                         const fleetSize = ships.filter(s => s.fleet === ship.fleet).length;
-                        const formationSpread = 0.008; // Spread ships in formation
+                        
+                        // Use standardized formation spread for all fleets
+                        const formationSpread = FORMATION_CONFIG.radius * 0.533; // Consistent with harbor formation
                         
                         const formationOffset = [
                             Math.sin((fleetIndex / fleetSize) * Math.PI * 2) * formationSpread,
@@ -1129,13 +1141,15 @@
             battleTime = 0;
             casualties = 0;
             
-            // Reset ships to their original sea anchorages
+            // Reset ships to their original standardized sea formations
             ships.forEach(ship => {
                 const homePort = HOME_PORTS[ship.fleet];
                 const index = ships.filter(s => s.fleet === ship.fleet).indexOf(ship);
                 const angle = (index / fleetData[ship.fleet].length) * 2 * Math.PI;
-                const radius = 0.015;
-                const radiusVariation = radius * (0.7 + Math.random() * 0.6);
+                
+                // Use standardized formation configuration for all fleets
+                const radiusVariation = FORMATION_CONFIG.radius * 
+                    (FORMATION_CONFIG.baseVariation + Math.random() * FORMATION_CONFIG.radiusVariation);
                 
                 ship.health = 100;
                 ship.sunk = false;
@@ -1297,10 +1311,11 @@
                 const minDistanceFromShore = 0.005; // Keep ships at least this far from any potential land
                 
                 if (ship.fleet === 'british') {
-                    // British ships attack in two columns from the west
+                    // British ships attack in two columns from the west using standardized formation
+                    const columnSpacing = FORMATION_CONFIG.radius * 0.533; // Consistent formation spacing
                     const targetCoords = [
                         BATTLE_COORDS[0] - 0.01, // West of battle zone
-                        BATTLE_COORDS[1] + (ship.id % 2 === 0 ? 0.008 : -0.008) // Two columns
+                        BATTLE_COORDS[1] + (ship.id % 2 === 0 ? columnSpacing : -columnSpacing) // Two columns
                     ];
                     
                     const lngDiff = targetCoords[0] - ship.coords[0];
@@ -1317,10 +1332,12 @@
                         ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
                     }
                 } else {
-                    // Franco-Spanish line formation - maintain position east of battle
+                    // Franco-Spanish line formation - maintain position east of battle using standardized formation
+                    const lineSpacing = FORMATION_CONFIG.radius * 0.533; // Consistent formation spacing
+                    const lineSpread = FORMATION_CONFIG.radius; // Consistent spread
                     const targetCoords = [
-                        BATTLE_COORDS[0] + 0.008, // East of battle zone, in safe waters
-                        BATTLE_COORDS[1] + (Math.random() - 0.5) * 0.015
+                        BATTLE_COORDS[0] + lineSpacing, // East of battle zone, in safe waters
+                        BATTLE_COORDS[1] + (Math.random() - 0.5) * lineSpread
                     ];
                     
                     const lngDiff = targetCoords[0] - ship.coords[0];
@@ -1346,12 +1363,13 @@
             ships.forEach(ship => {
                 if (ship.sunk) return;
                 
-                // Find nearby enemy ships
+                // Find nearby enemy ships using standardized combat range
+                const combatRange = FORMATION_CONFIG.radius * 0.533; // Consistent with formation spacing
                 const enemies = ships.filter(s => 
                     !s.sunk && 
                     s.fleet !== ship.fleet && 
-                    Math.abs(s.coords[0] - ship.coords[0]) < 0.008 && 
-                    Math.abs(s.coords[1] - ship.coords[1]) < 0.008
+                    Math.abs(s.coords[0] - ship.coords[0]) < combatRange && 
+                    Math.abs(s.coords[1] - ship.coords[1]) < combatRange
                 );
                 
                 if (enemies.length > 0) {

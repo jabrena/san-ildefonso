@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle of Trafalgar - San Ildefonso Simulation</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(180deg, #87CEEB 0%, #4682B4 50%, #2F4F4F 100%);
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+        }
+        
+        .simulation-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .battle-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        
+        .control-btn {
+            background: #8B4513;
+            color: white;
+            border: 2px solid #654321;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .control-btn:hover {
+            background: #A0522D;
+        }
+        
+        .ship-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 12px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+        }
+        
+        .cannon-fire {
+            fill: #FFD700;
+            stroke: #FF4500;
+            stroke-width: 2;
+        }
+        
+        .water-ripple {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.5);
+            stroke-width: 2;
+        }
+        
+        .coastline {
+            fill: #8FBC8F;
+            stroke: #556B2F;
+            stroke-width: 2;
+        }
+        
+        .smoke {
+            fill: #696969;
+            opacity: 0.6;
+        }
+        
+        .flag {
+            stroke-width: 1;
+        }
+        
+        .wind-lines {
+            stroke: rgba(255, 255, 255, 0.3);
+            stroke-width: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="simulation-container">
+        <div class="battle-info">
+            <h3>Battle of Trafalgar - October 21, 1805</h3>
+            <div id="battle-status">Preparing for battle...</div>
+            <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> Ready for action</div>
+            <div id="casualties">Ships lost: 0</div>
+            <div id="time">Time: 12:00 PM</div>
+            <div id="weather">Wind: Light SW breeze</div>
+        </div>
+        
+        <div class="legend">
+            <h4>Fleet Legend</h4>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #C41E3A;"></div>
+                <span>Spanish Fleet</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #0055A4;"></div>
+                <span>French Fleet</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #012169;"></div>
+                <span>British Fleet</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFD700;"></div>
+                <span>San Ildefonso (Focus)</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" onclick="startBattle()">Start Battle</button>
+            <button class="control-btn" onclick="pauseBattle()">Pause</button>
+            <button class="control-btn" onclick="resetBattle()">Reset</button>
+            <button class="control-btn" onclick="focusOnSanIldefonso()">Focus San Ildefonso</button>
+            <button class="control-btn" onclick="toggleSpeed()">Speed: 1x</button>
+        </div>
+        
+        <div class="ship-tooltip" id="tooltip"></div>
+        
+        <svg id="battle-simulation" width="100%" height="100%"></svg>
+    </div>
+
+    <script>
+        // Global variables
+        let svg, simulation, ships = [], cannonFires = [], 
+            battleStarted = false, battlePaused = false, 
+            battleTime = 0, casualties = 0, battleSpeed = 1;
+        
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // Historical ship data for Battle of Trafalgar
+        const fleetData = {
+            spanish: [
+                { name: "San Ildefonso", type: "Ship of the Line", guns: 74, x: 300, y: 400, flagship: true, crew: 640 },
+                { name: "Santísima Trinidad", type: "First Rate", guns: 136, x: 280, y: 380, crew: 1048 },
+                { name: "Santa Ana", type: "Ship of the Line", guns: 112, x: 320, y: 420, crew: 810 },
+                { name: "San Juan Nepomuceno", type: "Ship of the Line", guns: 74, x: 340, y: 440, crew: 640 },
+                { name: "San Justo", type: "Ship of the Line", guns: 74, x: 260, y: 360, crew: 640 },
+                { name: "San Leandro", type: "Ship of the Line", guns: 64, x: 360, y: 460, crew: 520 },
+                { name: "Monarca", type: "Ship of the Line", guns: 74, x: 240, y: 340, crew: 640 },
+                { name: "Neptuno", type: "Ship of the Line", guns: 80, x: 380, y: 480, crew: 690 },
+                { name: "Bahama", type: "Ship of the Line", guns: 74, x: 220, y: 320, crew: 640 },
+                { name: "San Francisco de Asís", type: "Ship of the Line", guns: 74, x: 400, y: 500, crew: 640 }
+            ],
+            french: [
+                { name: "Bucentaure", type: "Ship of the Line", guns: 80, x: 200, y: 300, flagship: true, crew: 690 },
+                { name: "Redoutable", type: "Ship of the Line", guns: 74, x: 220, y: 320, crew: 643 },
+                { name: "Neptune", type: "Ship of the Line", guns: 80, x: 180, y: 280, crew: 690 },
+                { name: "Fougueux", type: "Ship of the Line", guns: 74, x: 240, y: 340, crew: 640 },
+                { name: "Indomptable", type: "Ship of the Line", guns: 80, x: 160, y: 260, crew: 690 },
+                { name: "Intrépide", type: "Ship of the Line", guns: 74, x: 260, y: 360, crew: 640 },
+                { name: "Aigle", type: "Ship of the Line", guns: 74, x: 140, y: 240, crew: 640 },
+                { name: "Achille", type: "Ship of the Line", guns: 74, x: 300, y: 380, crew: 640 },
+                { name: "Berwick", type: "Ship of the Line", guns: 74, x: 120, y: 220, crew: 640 },
+                { name: "Algésiras", type: "Ship of the Line", guns: 74, x: 100, y: 200, crew: 640 }
+            ],
+            british: [
+                { name: "HMS Victory", type: "First Rate", guns: 104, x: 600, y: 200, flagship: true, crew: 820 },
+                { name: "HMS Royal Sovereign", type: "First Rate", guns: 100, x: 620, y: 500, flagship: true, crew: 800 },
+                { name: "HMS Temeraire", type: "Ship of the Line", guns: 98, x: 580, y: 180, crew: 750 },
+                { name: "HMS Neptune", type: "Ship of the Line", guns: 98, x: 640, y: 220, crew: 750 },
+                { name: "HMS Conqueror", type: "Ship of the Line", guns: 74, x: 600, y: 520, crew: 640 },
+                { name: "HMS Leviathan", type: "Ship of the Line", guns: 74, x: 580, y: 540, crew: 640 },
+                { name: "HMS Ajax", type: "Ship of the Line", guns: 74, x: 660, y: 240, crew: 640 },
+                { name: "HMS Agamemnon", type: "Ship of the Line", guns: 64, x: 640, y: 560, crew: 520 },
+                { name: "HMS Bellerophon", type: "Ship of the Line", guns: 74, x: 560, y: 160, crew: 640 },
+                { name: "HMS Colossus", type: "Ship of the Line", guns: 74, x: 680, y: 260, crew: 640 },
+                { name: "HMS Britannia", type: "First Rate", guns: 100, x: 700, y: 280, crew: 800 },
+                { name: "HMS Tonnant", type: "Ship of the Line", guns: 80, x: 540, y: 140, crew: 690 }
+            ]
+        };
+
+        // Initialize the simulation
+        function initSimulation() {
+            svg = d3.select("#battle-simulation");
+            
+            // Create water effects
+            createWaterEffects();
+            
+            // Create coastline
+            createCoastline();
+            
+            // Add wind indicators
+            createWindIndicators();
+            
+            // Prepare ship data
+            prepareShips();
+            
+            // Create D3 force simulation
+            createForceSimulation();
+            
+            // Draw ships
+            drawShips();
+            
+            // Setup interaction
+            setupInteraction();
+        }
+        
+        function createWaterEffects() {
+            // Add water ripples
+            for (let i = 0; i < 20; i++) {
+                svg.append("circle")
+                    .attr("class", "water-ripple")
+                    .attr("cx", Math.random() * width)
+                    .attr("cy", Math.random() * height)
+                    .attr("r", 0)
+                    .transition()
+                    .duration(3000 + Math.random() * 2000)
+                    .attr("r", 30 + Math.random() * 20)
+                    .style("opacity", 0)
+                    .on("end", function() { d3.select(this).remove(); });
+            }
+        }
+        
+        function createCoastline() {
+            // Spanish coast (Cape Trafalgar)
+            const coastlineData = [
+                { x: 0, y: height * 0.8 },
+                { x: width * 0.2, y: height * 0.85 },
+                { x: width * 0.4, y: height * 0.9 },
+                { x: width * 0.6, y: height * 0.95 },
+                { x: width, y: height }
+            ];
+            
+            const line = d3.line()
+                .x(d => d.x)
+                .y(d => d.y)
+                .curve(d3.curveBasis);
+            
+            svg.append("path")
+                .datum(coastlineData)
+                .attr("class", "coastline")
+                .attr("d", line);
+            
+            // Add coastal features
+            svg.append("text")
+                .attr("x", width * 0.1)
+                .attr("y", height * 0.9)
+                .attr("fill", "#2F4F4F")
+                .attr("font-size", "16px")
+                .attr("font-weight", "bold")
+                .text("Cape Trafalgar");
+                
+            svg.append("text")
+                .attr("x", width * 0.05)
+                .attr("y", height * 0.93)
+                .attr("fill", "#556B2F")
+                .attr("font-size", "12px")
+                .text("Spanish Coast");
+        }
+        
+        function createWindIndicators() {
+            // Wind lines to show direction (SW wind)
+            for (let i = 0; i < 10; i++) {
+                svg.append("line")
+                    .attr("class", "wind-lines")
+                    .attr("x1", 50 + i * 60)
+                    .attr("y1", 50)
+                    .attr("x2", 70 + i * 60)
+                    .attr("y2", 70)
+                    .style("opacity", 0.3);
+            }
+        }
+        
+        function prepareShips() {
+            ships = [];
+            let id = 0;
+            
+            Object.keys(fleetData).forEach(fleet => {
+                fleetData[fleet].forEach(shipData => {
+                    ships.push({
+                        id: id++,
+                        ...shipData,
+                        fleet: fleet,
+                        health: 100,
+                        sunk: false,
+                        angle: fleet === 'british' ? 180 : 0,
+                        vx: 0,
+                        vy: 0,
+                        inCombat: false,
+                        target: null,
+                        lastFired: 0,
+                        morale: 100,
+                        damage: 0
+                    });
+                });
+            });
+        }
+        
+        function createForceSimulation() {
+            simulation = d3.forceSimulation(ships)
+                .force("collision", d3.forceCollide().radius(d => d.guns > 100 ? 35 : d.guns > 80 ? 30 : 25))
+                .force("center", d3.forceCenter(width / 2, height / 2).strength(0.05))
+                .on("tick", updatePositions);
+        }
+        
+        function drawShips() {
+            const shipGroups = svg.selectAll(".ship")
+                .data(ships, d => d.id)
+                .enter()
+                .append("g")
+                .attr("class", "ship")
+                .attr("data-ship-id", d => d.id)
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+            
+            // Ship hulls with detailed design
+            shipGroups.append("ellipse")
+                .attr("rx", d => d.guns > 100 ? 30 : d.guns > 80 ? 25 : 20)
+                .attr("ry", d => d.guns > 100 ? 10 : d.guns > 80 ? 8 : 6)
+                .attr("fill", d => {
+                    if (d.name === "San Ildefonso") return "#FFD700";
+                    return d.fleet === "spanish" ? "#C41E3A" : 
+                           d.fleet === "french" ? "#0055A4" : "#012169";
+                })
+                .attr("stroke", "#8B4513")
+                .attr("stroke-width", 2);
+            
+            // Ship deck details
+            shipGroups.append("ellipse")
+                .attr("rx", d => (d.guns > 100 ? 30 : d.guns > 80 ? 25 : 20) - 3)
+                .attr("ry", d => (d.guns > 100 ? 10 : d.guns > 80 ? 8 : 6) - 2)
+                .attr("fill", "#D2B48C")
+                .attr("stroke", "#8B4513")
+                .attr("stroke-width", 1);
+            
+            // Masts and rigging
+            shipGroups.each(function(d) {
+                const group = d3.select(this);
+                const mastCount = d.guns > 100 ? 4 : 3;
+                const shipLength = d.guns > 100 ? 60 : d.guns > 80 ? 50 : 40;
+                
+                for (let i = 0; i < mastCount; i++) {
+                    const mastX = -shipLength/2 + (shipLength / (mastCount - 1)) * i;
+                    const mastHeight = d.guns > 100 ? 25 : d.guns > 80 ? 20 : 18;
+                    
+                    // Main mast
+                    group.append("line")
+                        .attr("x1", mastX)
+                        .attr("y1", -mastHeight)
+                        .attr("x2", mastX)
+                        .attr("y2", mastHeight/2)
+                        .attr("stroke", "#8B4513")
+                        .attr("stroke-width", 3);
+                    
+                    // Topmast
+                    group.append("line")
+                        .attr("x1", mastX)
+                        .attr("y1", -mastHeight)
+                        .attr("x2", mastX)
+                        .attr("y2", -mastHeight * 1.5)
+                        .attr("stroke", "#8B4513")
+                        .attr("stroke-width", 2);
+                    
+                    // Main sail
+                    group.append("rect")
+                        .attr("x", mastX - 8)
+                        .attr("y", -mastHeight + 3)
+                        .attr("width", 16)
+                        .attr("height", mastHeight - 8)
+                        .attr("fill", "#F5F5DC")
+                        .attr("stroke", "#D2B48C")
+                        .attr("rx", 2);
+                    
+                    // Topsail
+                    group.append("rect")
+                        .attr("x", mastX - 6)
+                        .attr("y", -mastHeight * 1.4)
+                        .attr("width", 12)
+                        .attr("height", mastHeight * 0.3)
+                        .attr("fill", "#F5F5DC")
+                        .attr("stroke", "#D2B48C")
+                        .attr("rx", 1);
+                    
+                    // Rigging lines
+                    if (i < mastCount - 1) {
+                        const nextMastX = -shipLength/2 + (shipLength / (mastCount - 1)) * (i + 1);
+                        group.append("line")
+                            .attr("x1", mastX)
+                            .attr("y1", -mastHeight)
+                            .attr("x2", nextMastX)
+                            .attr("y2", -mastHeight)
+                            .attr("stroke", "#654321")
+                            .attr("stroke-width", 1);
+                    }
+                }
+                
+                // Bowsprit (front mast)
+                group.append("line")
+                    .attr("x1", shipLength/2)
+                    .attr("y1", 0)
+                    .attr("x2", shipLength/2 + 15)
+                    .attr("y2", -5)
+                    .attr("stroke", "#8B4513")
+                    .attr("stroke-width", 2);
+                
+                // Jib sail
+                group.append("polygon")
+                    .attr("points", `${shipLength/2 + 5},-3 ${shipLength/2 + 12},-8 ${shipLength/2 + 12},2`)
+                    .attr("fill", "#F5F5DC")
+                    .attr("stroke", "#D2B48C");
+            });
+            
+            // Cannon ports
+            shipGroups.each(function(d) {
+                const group = d3.select(this);
+                const portCount = Math.floor(d.guns / 20);
+                const shipLength = d.guns > 100 ? 60 : d.guns > 80 ? 50 : 40;
+                
+                for (let i = 0; i < portCount; i++) {
+                    const portX = -shipLength/2 + 10 + (shipLength - 20) / (portCount - 1) * i;
+                    
+                    // Port side cannons
+                    group.append("rect")
+                        .attr("x", portX - 1)
+                        .attr("y", -2)
+                        .attr("width", 2)
+                        .attr("height", 4)
+                        .attr("fill", "#2F4F4F");
+                    
+                    // Starboard side cannons  
+                    group.append("rect")
+                        .attr("x", portX - 1)
+                        .attr("y", 2)
+                        .attr("width", 2)
+                        .attr("height", 4)
+                        .attr("fill", "#2F4F4F");
+                }
+            });
+            
+            // National flags
+            shipGroups.append("rect")
+                .attr("x", d => d.guns > 100 ? 25 : d.guns > 80 ? 20 : 15)
+                .attr("y", -(d => d.guns > 100 ? 25 : d.guns > 80 ? 20 : 18))
+                .attr("width", 12)
+                .attr("height", 8)
+                .attr("fill", d => {
+                    return d.fleet === "spanish" ? "#C41E3A" : 
+                           d.fleet === "french" ? "#0055A4" : "#012169";
+                })
+                .attr("stroke", "white")
+                .attr("stroke-width", 0.5)
+                .attr("class", "flag");
+            
+            // Ship names
+            shipGroups.append("text")
+                .attr("y", -35)
+                .attr("text-anchor", "middle")
+                .attr("font-size", d => d.name === "San Ildefonso" ? "12px" : "10px")
+                .attr("font-weight", d => d.name === "San Ildefonso" || d.flagship ? "bold" : "normal")
+                .attr("fill", d => d.name === "San Ildefonso" ? "#FFD700" : "white")
+                .attr("stroke", "black")
+                .attr("stroke-width", 0.5)
+                .text(d => d.name);
+            
+            // Health bars
+            const healthBars = shipGroups.append("g").attr("class", "health-bar");
+            
+            healthBars.append("rect")
+                .attr("x", -15)
+                .attr("y", 20)
+                .attr("width", 30)
+                .attr("height", 4)
+                .attr("fill", "red")
+                .attr("stroke", "black")
+                .attr("stroke-width", 1);
+                
+            healthBars.append("rect")
+                .attr("x", -15)
+                .attr("y", 20)
+                .attr("width", d => 30 * (d.health / 100))
+                .attr("height", 4)
+                .attr("fill", d => d.health > 70 ? "green" : d.health > 30 ? "yellow" : "red")
+                .attr("class", "health-fill");
+        }
+        
+        function updatePositions() {
+            svg.selectAll(".ship")
+                .attr("transform", d => `translate(${d.x}, ${d.y}) rotate(${d.angle})`);
+                
+            // Update health bars
+            svg.selectAll(".health-fill")
+                .attr("width", d => 30 * (d.health / 100))
+                .attr("fill", d => d.health > 70 ? "green" : d.health > 30 ? "yellow" : "red");
+        }
+        
+        function setupInteraction() {
+            svg.selectAll(".ship")
+                .on("mouseover", function(event, d) {
+                    const tooltip = d3.select("#tooltip");
+                    tooltip.style("opacity", 1)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 10) + "px")
+                        .html(`
+                            <strong>${d.name}</strong><br/>
+                            Fleet: ${d.fleet.charAt(0).toUpperCase() + d.fleet.slice(1)}<br/>
+                            Type: ${d.type}<br/>
+                            Guns: ${d.guns}<br/>
+                            Crew: ${d.crew}<br/>
+                            Health: ${Math.round(d.health)}%<br/>
+                            Morale: ${Math.round(d.morale)}%<br/>
+                            ${d.flagship ? '<em>⭐ Flagship</em>' : ''}<br/>
+                            ${d.inCombat ? '<em>🔥 In Combat</em>' : ''}
+                        `);
+                })
+                .on("mouseout", function() {
+                    d3.select("#tooltip").style("opacity", 0);
+                })
+                .on("click", function(event, d) {
+                    focusOnShip(d);
+                });
+        }
+        
+        // Battle control functions
+        function startBattle() {
+            if (!battleStarted) {
+                battleStarted = true;
+                battlePaused = false;
+                d3.select("#battle-status").text("Battle commencing - Nelson's attack begins!");
+                simulateBattle();
+            } else if (battlePaused) {
+                battlePaused = false;
+                d3.select("#battle-status").text("Battle resumed");
+                simulateBattle();
+            }
+        }
+        
+        function pauseBattle() {
+            battlePaused = true;
+            d3.select("#battle-status").text("Battle paused");
+        }
+        
+        function resetBattle() {
+            battleStarted = false;
+            battlePaused = false;
+            battleTime = 0;
+            casualties = 0;
+            
+            // Reset ship positions and health
+            ships.forEach((ship, index) => {
+                const originalData = Object.values(fleetData).flat()[index];
+                ship.health = 100;
+                ship.sunk = false;
+                ship.inCombat = false;
+                ship.target = null;
+                ship.morale = 100;
+                ship.damage = 0;
+                ship.x = originalData.x;
+                ship.y = originalData.y;
+                ship.angle = ship.fleet === 'british' ? 180 : 0;
+            });
+            
+            d3.select("#battle-status").text("Preparing for battle...");
+            d3.select("#san-ildefonso-status").text("San Ildefonso: Ready for action");
+            d3.select("#casualties").text("Ships lost: 0");
+            d3.select("#time").text("Time: 12:00 PM");
+            
+            // Remove all visual effects
+            svg.selectAll(".cannon-fire").remove();
+            svg.selectAll(".smoke").remove();
+            svg.selectAll(".explosion").remove();
+            
+            // Redraw ships
+            svg.selectAll(".ship").remove();
+            drawShips();
+            setupInteraction();
+        }
+        
+        function toggleSpeed() {
+            battleSpeed = battleSpeed === 1 ? 2 : battleSpeed === 2 ? 4 : 1;
+            d3.select(event.target).text(`Speed: ${battleSpeed}x`);
+        }
+        
+        function focusOnSanIldefonso() {
+            const sanIldefonso = ships.find(s => s.name === "San Ildefonso");
+            if (sanIldefonso) {
+                focusOnShip(sanIldefonso);
+            }
+        }
+        
+        function focusOnShip(ship) {
+            svg.transition()
+                .duration(1500)
+                .attr("viewBox", `${ship.x - 200} ${ship.y - 150} 400 300`);
+                
+            // Highlight the focused ship
+            svg.selectAll(".ship").style("opacity", 0.5);
+            svg.select(`[data-ship-id="${ship.id}"]`).style("opacity", 1);
+            
+            setTimeout(() => {
+                svg.selectAll(".ship").style("opacity", 1);
+                svg.transition().duration(1000).attr("viewBox", `0 0 ${width} ${height}`);
+            }, 3000);
+        }
+        
+        function simulateBattle() {
+            if (!battleStarted || battlePaused) return;
+            
+            // Move ships into battle formation
+            moveShipsIntoBattle();
+            
+            // Handle combat
+            handleCombat();
+            
+            // Update battle time and status
+            battleTime += battleSpeed;
+            updateBattleStatus();
+            
+            // Create water effects periodically
+            if (battleTime % 200 === 0) {
+                createWaterEffects();
+            }
+            
+            // Check battle end conditions
+            checkBattleEnd();
+            
+            // Continue simulation
+            setTimeout(simulateBattle, 100);
+        }
+        
+        function moveShipsIntoBattle() {
+            ships.forEach(ship => {
+                if (ship.sunk) return;
+                
+                // British ships move in two columns perpendicular to enemy line
+                if (ship.fleet === 'british') {
+                    if (ship.name.includes('Royal Sovereign') || ship.name.includes('Conqueror') || 
+                        ship.name.includes('Leviathan') || ship.name.includes('Agamemnon')) {
+                        // Southern column (Collingwood's division)
+                        ship.x = Math.max(ship.x - 0.8 * battleSpeed, 420);
+                        ship.angle = 270;
+                        if (ship.x <= 420) ship.y = Math.max(ship.y - 0.3 * battleSpeed, 300);
+                    } else {
+                        // Northern column (Nelson's division)
+                        ship.x = Math.max(ship.x - 0.6 * battleSpeed, 450);
+                        ship.angle = 270;
+                        if (ship.x <= 450) ship.y = Math.min(ship.y + 0.2 * battleSpeed, 400);
+                    }
+                }
+                
+                // Franco-Spanish line tries to maintain formation but begins to break
+                if (ship.fleet === 'spanish' || ship.fleet === 'french') {
+                    ship.angle = 0;
+                    
+                    // San Ildefonso specific historical movements
+                    if (ship.name === "San Ildefonso") {
+                        if (battleTime < 300) {
+                            // Initial positioning in line
+                            ship.x += 0.1 * battleSpeed;
+                        } else if (battleTime < 800) {
+                            // Engage HMS Defiance and other British ships
+                            ship.x -= 0.3 * battleSpeed;
+                            ship.y += 0.2 * battleSpeed;
+                            ship.angle = 315; // Turn to engage
+                        } else if (battleTime < 1200) {
+                            // Heavy combat phase
+                            ship.angle = 270;
+                            if (ship.health < 50) {
+                                ship.x += 0.1 * battleSpeed; // Try to withdraw
+                            }
+                        }
+                    }
+                    
+                    // Other ships follow general patterns
+                    if (battleTime > 200) {
+                        // Line begins to break as British ships cut through
+                        ship.x -= 0.1 * battleSpeed;
+                        if (ship.health < 70) {
+                            ship.y += (Math.random() - 0.5) * 0.4 * battleSpeed;
+                        }
+                    }
+                }
+                
+                // Keep ships within bounds
+                ship.x = Math.max(50, Math.min(width - 50, ship.x));
+                ship.y = Math.max(50, Math.min(height - 100, ship.y));
+            });
+        }
+        
+        function handleCombat() {
+            ships.forEach(ship => {
+                if (ship.sunk) return;
+                
+                // Find nearby enemy ships
+                const enemies = ships.filter(s => 
+                    !s.sunk && 
+                    s.fleet !== ship.fleet && 
+                    Math.abs(s.x - ship.x) < 120 && 
+                    Math.abs(s.y - ship.y) < 120
+                );
+                
+                if (enemies.length > 0) {
+                    ship.inCombat = true;
+                    const target = enemies.reduce((closest, enemy) => {
+                        const distToEnemy = Math.hypot(enemy.x - ship.x, enemy.y - ship.y);
+                        const distToClosest = Math.hypot(closest.x - ship.x, closest.y - ship.y);
+                        return distToEnemy < distToClosest ? enemy : closest;
+                    });
+                    
+                    ship.target = target;
+                    
+                    // Fire cannons based on reload time and range
+                    const distance = Math.hypot(target.x - ship.x, target.y - ship.y);
+                    const reloadTime = 180 - (ship.guns / 2); // Faster reload for more guns
+                    
+                    if (battleTime - ship.lastFired > reloadTime && distance < 100) {
+                        fireCannons(ship, target);
+                        ship.lastFired = battleTime;
+                    }
+                } else {
+                    ship.inCombat = false;
+                    ship.target = null;
+                }
+            });
+        }
+        
+        function fireCannons(attacker, target) {
+            const distance = Math.hypot(target.x - attacker.x, target.y - attacker.y);
+            const accuracy = Math.max(0.3, 1 - (distance / 150)) * (attacker.morale / 100);
+            
+            // Create cannon fire visual effect
+            const fireGroup = svg.append("g").attr("class", "cannon-fire");
+            
+            const midX = (attacker.x + target.x) / 2;
+            const midY = (attacker.y + target.y) / 2;
+            
+            // Muzzle flash
+            fireGroup.append("circle")
+                .attr("cx", attacker.x)
+                .attr("cy", attacker.y)
+                .attr("r", 5)
+                .attr("fill", "#FFD700")
+                .transition()
+                .duration(200)
+                .attr("r", 15)
+                .style("opacity", 0)
+                .remove();
+            
+            // Cannon ball trajectory
+            fireGroup.append("circle")
+                .attr("cx", attacker.x)
+                .attr("cy", attacker.y)
+                .attr("r", 2)
+                .attr("fill", "#2F4F4F")
+                .transition()
+                .duration(500)
+                .attr("cx", target.x + (Math.random() - 0.5) * 40)
+                .attr("cy", target.y + (Math.random() - 0.5) * 40)
+                .remove();
+            
+            // Smoke effect
+            fireGroup.append("ellipse")
+                .attr("cx", attacker.x)
+                .attr("cy", attacker.y)
+                .attr("rx", 0)
+                .attr("ry", 0)
+                .attr("class", "smoke")
+                .transition()
+                .duration(2000)
+                .attr("rx", 20)
+                .attr("ry", 15)
+                .style("opacity", 0)
+                .remove();
+            
+            // Apply damage if hit
+            if (Math.random() < accuracy) {
+                const baseDamage = (attacker.guns / 10) + Math.random() * 10;
+                const damage = baseDamage * (distance < 50 ? 1.5 : 1); // Close range bonus
+                
+                target.health -= damage;
+                target.damage += damage;
+                target.morale -= damage / 5;
+                
+                // Create hit effect
+                svg.append("circle")
+                    .attr("cx", target.x)
+                    .attr("cy", target.y)
+                    .attr("r", 0)
+                    .attr("fill", "#FF4500")
+                    .transition()
+                    .duration(300)
+                    .attr("r", 12)
+                    .style("opacity", 0)
+                    .remove();
+                
+                // Damage attacker's morale slightly (battle fatigue)
+                attacker.morale -= 1;
+                
+                if (target.health <= 0 && !target.sunk) {
+                    sinkShip(target);
+                }
+            }
+        }
+        
+        function sinkShip(ship) {
+            ship.sunk = true;
+            casualties++;
+            
+            // Explosion effect
+            const explosion = svg.append("g").attr("class", "explosion");
+            
+            explosion.append("circle")
+                .attr("cx", ship.x)
+                .attr("cy", ship.y)
+                .attr("r", 0)
+                .attr("fill", "#FF4500")
+                .transition()
+                .duration(1000)
+                .attr("r", 40)
+                .style("opacity", 0)
+                .remove();
+            
+            // Debris
+            for (let i = 0; i < 8; i++) {
+                explosion.append("rect")
+                    .attr("x", ship.x)
+                    .attr("y", ship.y)
+                    .attr("width", 3)
+                    .attr("height", 8)
+                    .attr("fill", "#8B4513")
+                    .transition()
+                    .duration(2000)
+                    .attr("x", ship.x + (Math.random() - 0.5) * 100)
+                    .attr("y", ship.y + Math.random() * 50)
+                    .style("opacity", 0)
+                    .remove();
+            }
+            
+            // Ship sinking animation
+            svg.select(`[data-ship-id="${ship.id}"]`)
+                .transition()
+                .duration(3000)
+                .style("opacity", 0.2)
+                .attr("transform", d => `translate(${d.x}, ${d.y + 30}) rotate(${d.angle + 45}) scale(0.8)`);
+            
+            // Update status for San Ildefonso
+            if (ship.name === "San Ildefonso") {
+                d3.select("#san-ildefonso-status").html("<strong>San Ildefonso: SUNK! ⚓</strong>");
+            }
+        }
+        
+        function updateBattleStatus() {
+            const minutes = Math.floor(battleTime / 600);
+            const hours = 12 + Math.floor(minutes / 60);
+            const displayMinutes = minutes % 60;
+            
+            d3.select("#time").text(`Time: ${hours}:${displayMinutes.toString().padStart(2, '0')} PM`);
+            d3.select("#casualties").text(`Ships lost: ${casualties}`);
+            
+            // Update San Ildefonso specific status
+            const sanIldefonso = ships.find(s => s.name === "San Ildefonso");
+            if (sanIldefonso && !sanIldefonso.sunk) {
+                let status = `San Ildefonso: ${Math.round(sanIldefonso.health)}% hull integrity`;
+                if (sanIldefonso.inCombat) {
+                    status += " - ENGAGING ENEMY! 🔥";
+                }
+                if (sanIldefonso.health < 30) {
+                    status += " - CRITICAL DAMAGE! ⚠️";
+                }
+                d3.select("#san-ildefonso-status").html(`<strong>${status}</strong>`);
+            }
+            
+            // Update overall battle status
+            const britishLosses = ships.filter(s => s.fleet === 'british' && s.sunk).length;
+            const allyLosses = ships.filter(s => (s.fleet === 'spanish' || s.fleet === 'french') && s.sunk).length;
+            
+            if (battleTime > 2000) {
+                if (allyLosses > britishLosses * 2) {
+                    d3.select("#battle-status").text("British victory becoming apparent...");
+                } else if (britishLosses > allyLosses) {
+                    d3.select("#battle-status").text("Franco-Spanish resistance holding...");
+                } else {
+                    d3.select("#battle-status").text("Battle raging - outcome uncertain!");
+                }
+            }
+        }
+        
+        function checkBattleEnd() {
+            const totalShips = ships.length;
+            const sunkShips = ships.filter(s => s.sunk).length;
+            
+            if (sunkShips > totalShips * 0.3 || battleTime > 3000) {
+                battleStarted = false;
+                
+                const britishLosses = ships.filter(s => s.fleet === 'british' && s.sunk).length;
+                const allyLosses = ships.filter(s => (s.fleet === 'spanish' || s.fleet === 'french') && s.sunk).length;
+                
+                if (allyLosses > britishLosses) {
+                    d3.select("#battle-status").text("Battle concluded - British victory! Nelson's tactics triumph.");
+                } else {
+                    d3.select("#battle-status").text("Battle concluded - Tactical draw achieved.");
+                }
+            }
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+            svg.attr("width", newWidth).attr("height", newHeight);
+        });
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initSimulation);
+    </script>
+</body>
+</html>

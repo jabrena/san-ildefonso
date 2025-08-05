@@ -375,7 +375,7 @@
     <div class="battle-overlay">
         <div class="battle-info">
             <h3>Battle of Trafalgar - October 21, 1805</h3>
-            <div id="battle-status">Ships gathering at their home ports...</div>
+            <div id="battle-status">Fleets anchored in home waters, awaiting orders...</div>
             <div id="san-ildefonso-status"><strong>San Ildefonso:</strong> Ready in Cadiz</div>
             <div id="casualties">Ships lost: 0</div>
             <div id="time">Time: 06:00 AM</div>
@@ -438,11 +438,43 @@
         // Battle coordinates (off Cape Trafalgar)
         const BATTLE_COORDS = [-6.2553, 36.2930]; // [longitude, latitude] for OpenLayers
         
-        // Home ports
+        // Home ports - moved to sea positions near the actual ports
         const HOME_PORTS = {
-            spanish: { coords: [-6.2920, 36.5297], name: "Cadiz" }, // Cadiz, Spain
-            french: { coords: [5.3698, 43.2965], name: "Toulon" }, // Toulon, France  
-            british: { coords: [-1.1112, 50.7984], name: "Portsmouth" } // Portsmouth, England
+            spanish: { coords: [-6.3420, 36.4897], name: "Cadiz Bay" }, // Positioned in Cadiz Bay, in the sea
+            french: { coords: [5.2898, 43.2565], name: "Toulon Harbor" }, // Positioned in Toulon Harbor, in the sea  
+            british: { coords: [-1.0512, 50.7684], name: "Spithead" } // Positioned at Spithead anchorage, in the sea
+        };
+
+        // Maritime waypoints for realistic sea routes - ships follow these to avoid land
+        const MARITIME_ROUTES = {
+            spanish: [
+                [-6.3420, 36.4897], // Start: Cadiz Bay
+                [-6.3120, 36.3497], // Southwest of Cadiz
+                [-6.2853, 36.2930]  // Battle location
+            ],
+            french: [
+                [5.2898, 43.2565],   // Start: Toulon Harbor
+                [4.8000, 42.8000],   // Southwest of Toulon
+                [3.5000, 42.0000],   // West of Corsica
+                [2.0000, 41.2000],   // East of Balearic Islands
+                [0.5000, 40.0000],   // East of Valencia
+                [-1.0000, 39.0000],  // Southeast of Spanish coast
+                [-3.0000, 37.5000],  // South of Andalusia
+                [-5.0000, 36.8000],  // Southwest approach
+                [-6.2853, 36.2930]   // Battle location
+            ],
+            british: [
+                [-1.0512, 50.7684],  // Start: Spithead
+                [-2.0000, 49.5000],  // West of Portsmouth
+                [-3.5000, 48.0000],  // Bay of Biscay
+                [-5.0000, 46.0000],  // Deep Atlantic
+                [-6.5000, 44.0000],  // Northwest of Spain
+                [-7.0000, 42.0000],  // West of Galicia
+                [-7.5000, 40.0000],  // West of Portugal
+                [-7.0000, 38.0000],  // Southwest of Portugal
+                [-6.5000, 37.0000],  // Approach to Gibraltar
+                [-6.2853, 36.2930]   // Battle location
+            ]
         };
         
         // Historical ship data
@@ -757,9 +789,12 @@
             Object.keys(fleetData).forEach(fleet => {
                 const homePort = HOME_PORTS[fleet];
                 fleetData[fleet].forEach((shipData, index) => {
-                    // Position ships around their home ports
+                    // Position ships in formation around their home anchorages (in the sea)
                     const angle = (index / fleetData[fleet].length) * 2 * Math.PI;
-                    const radius = 0.02; // Small radius in degrees
+                    const radius = 0.015; // Smaller radius for tighter formations in harbors
+                    
+                    // Add some variation to avoid perfect circles
+                    const radiusVariation = radius * (0.7 + Math.random() * 0.6);
                     
                     ships.push({
                         id: id++,
@@ -767,19 +802,21 @@
                         fleet: fleet,
                         health: 100,
                         sunk: false,
-                        angle: 0,
+                        angle: Math.random() * 360, // Random initial facing for realism
                         inCombat: false,
                         target: null,
                         lastFired: 0,
                         morale: 100,
                         damage: 0,
-                        // Starting position at home port (longitude, latitude)
+                        // Starting position in sea anchorage (longitude, latitude)
                         coords: [
-                            homePort.coords[0] + Math.cos(angle) * radius,
-                            homePort.coords[1] + Math.sin(angle) * radius
+                            homePort.coords[0] + Math.cos(angle) * radiusVariation,
+                            homePort.coords[1] + Math.sin(angle) * radiusVariation
                         ],
-                        // Journey state
+                        // Journey state with maritime route following
                         journeyProgress: 0,
+                        currentWaypoint: 0,
+                        route: MARITIME_ROUTES[fleet],
                         atBattle: false
                     });
                 });
@@ -876,14 +913,76 @@
             document.getElementById('startJourneyBtn').disabled = true;
             document.getElementById('startJourneyBtn').textContent = 'Journey In Progress...';
             
-            updateBattleStatus("Ships departing from home ports...");
+            updateBattleStatus("Ships departing from home waters...");
+            
+            // Draw maritime routes
+            drawMaritimeRoutes();
             
             // Animate ships to battle location
             animateJourney();
         }
         
+        function drawMaritimeRoutes() {
+            // Clear any existing paths
+            battleSvg.selectAll('.journey-path').remove();
+            
+            Object.entries(MARITIME_ROUTES).forEach(([fleet, route]) => {
+                const color = fleet === 'spanish' ? '#C41E3A' : fleet === 'french' ? '#0055A4' : '#012169';
+                
+                // Convert route coordinates to screen pixels
+                const pathData = route.map(coords => {
+                    const pixel = map.getPixelFromCoordinate(ol.proj.fromLonLat(coords));
+                    return pixel ? [pixel[0], pixel[1]] : [0, 0];
+                }).filter(pixel => pixel[0] !== 0 || pixel[1] !== 0);
+                
+                if (pathData.length > 1) {
+                    const pathString = pathData.reduce((path, point, index) => {
+                        return path + (index === 0 ? `M ${point[0]} ${point[1]}` : ` L ${point[0]} ${point[1]}`);
+                    }, '');
+                    
+                    battleSvg.append('path')
+                        .attr('d', pathString)
+                        .attr('class', 'journey-path')
+                        .attr('fleet', fleet)
+                        .style('stroke', color)
+                        .style('stroke-width', '2')
+                        .style('fill', 'none')
+                        .style('opacity', '0.6')
+                        .style('stroke-dasharray', '8,4')
+                        .style('pointer-events', 'none');
+                }
+            });
+            
+            // Update route paths when map moves
+            map.on('moveend', updateMaritimeRoutes);
+            map.on('postrender', updateMaritimeRoutes);
+        }
+        
+        function updateMaritimeRoutes() {
+            battleSvg.selectAll('.journey-path').each(function() {
+                const pathElement = d3.select(this);
+                const fleet = pathElement.attr('fleet');
+                const route = MARITIME_ROUTES[fleet];
+                
+                if (route) {
+                    const pathData = route.map(coords => {
+                        const pixel = map.getPixelFromCoordinate(ol.proj.fromLonLat(coords));
+                        return pixel ? [pixel[0], pixel[1]] : [0, 0];
+                    }).filter(pixel => pixel[0] !== 0 || pixel[1] !== 0);
+                    
+                    if (pathData.length > 1) {
+                        const pathString = pathData.reduce((path, point, index) => {
+                            return path + (index === 0 ? `M ${point[0]} ${point[1]}` : ` L ${point[0]} ${point[1]}`);
+                        }, '');
+                        
+                        pathElement.attr('d', pathString);
+                    }
+                }
+            });
+        }
+        
         function animateJourney() {
-            const journeyDuration = 8000; // 8 seconds
+            const journeyDuration = 12000; // 12 seconds for more realistic journey time
             const startTime = Date.now();
             
             function updateJourney() {
@@ -891,30 +990,68 @@
                 const progress = Math.min(elapsed / journeyDuration, 1);
                 
                 ships.forEach(ship => {
-                    const homePort = HOME_PORTS[ship.fleet];
-                    const lngDiff = BATTLE_COORDS[0] - homePort.coords[0];
-                    const latDiff = BATTLE_COORDS[1] - homePort.coords[1];
+                    if (ship.sunk) return;
                     
-                    // Add some formation positioning
-                    const formationOffset = [
-                        (Math.random() - 0.5) * 0.01,
-                        (Math.random() - 0.5) * 0.01
-                    ];
+                    const route = ship.route;
+                    const totalWaypoints = route.length - 1;
                     
-                    ship.coords = [
-                        homePort.coords[0] + (lngDiff * progress) + formationOffset[0],
-                        homePort.coords[1] + (latDiff * progress) + formationOffset[1]
-                    ];
+                    // Calculate which segment of the route we're on
+                    const routeProgress = progress * totalWaypoints;
+                    const currentSegment = Math.floor(routeProgress);
+                    const segmentProgress = routeProgress - currentSegment;
                     
-                    // Update angle based on movement direction
-                    ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI);
+                    // Get current and next waypoints
+                    const currentWaypoint = route[Math.min(currentSegment, totalWaypoints - 1)];
+                    const nextWaypoint = route[Math.min(currentSegment + 1, totalWaypoints)];
+                    
+                    // Interpolate between waypoints with smooth sailing physics
+                    if (currentWaypoint && nextWaypoint) {
+                        const lngDiff = nextWaypoint[0] - currentWaypoint[0];
+                        const latDiff = nextWaypoint[1] - currentWaypoint[1];
+                        
+                        // Add formation spread to prevent ships from overlapping
+                        const fleetIndex = ships.filter(s => s.fleet === ship.fleet).indexOf(ship);
+                        const fleetSize = ships.filter(s => s.fleet === ship.fleet).length;
+                        const formationSpread = 0.008; // Spread ships in formation
+                        
+                        const formationOffset = [
+                            Math.sin((fleetIndex / fleetSize) * Math.PI * 2) * formationSpread,
+                            Math.cos((fleetIndex / fleetSize) * Math.PI * 2) * formationSpread * 0.5
+                        ];
+                        
+                        // Smooth interpolation with slight course variation for realism
+                        const courseVariation = Math.sin(Date.now() * 0.001 + ship.id) * 0.0005;
+                        
+                        ship.coords = [
+                            currentWaypoint[0] + (lngDiff * segmentProgress) + formationOffset[0] + courseVariation,
+                            currentWaypoint[1] + (latDiff * segmentProgress) + formationOffset[1]
+                        ];
+                        
+                        // Update ship angle based on actual sailing direction
+                        if (lngDiff !== 0 || latDiff !== 0) {
+                            ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
+                        }
+                        
+                        // Update ship's current waypoint for status tracking
+                        ship.currentWaypoint = currentSegment;
+                    }
                 });
                 
                 updateShipPositions();
                 
-                // Update status
+                // Update status with more descriptive information
                 const percentage = Math.round(progress * 100);
-                updateBattleStatus(`Journey progress: ${percentage}% - Ships sailing to battle...`);
+                let statusMessage = `Journey progress: ${percentage}% - `;
+                
+                if (progress < 0.3) {
+                    statusMessage += "Fleets departing home waters...";
+                } else if (progress < 0.7) {
+                    statusMessage += "Ships sailing open seas, following maritime routes...";
+                } else {
+                    statusMessage += "Fleets converging on battle position...";
+                }
+                
+                updateBattleStatus(statusMessage);
                 
                 if (progress < 1) {
                     requestAnimationFrame(updateJourney);
@@ -992,12 +1129,13 @@
             battleTime = 0;
             casualties = 0;
             
-            // Reset ships
+            // Reset ships to their original sea anchorages
             ships.forEach(ship => {
                 const homePort = HOME_PORTS[ship.fleet];
                 const index = ships.filter(s => s.fleet === ship.fleet).indexOf(ship);
                 const angle = (index / fleetData[ship.fleet].length) * 2 * Math.PI;
-                const radius = 0.02;
+                const radius = 0.015;
+                const radiusVariation = radius * (0.7 + Math.random() * 0.6);
                 
                 ship.health = 100;
                 ship.sunk = false;
@@ -1006,11 +1144,14 @@
                 ship.morale = 100;
                 ship.damage = 0;
                 ship.coords = [
-                    homePort.coords[0] + Math.cos(angle) * radius,
-                    homePort.coords[1] + Math.sin(angle) * radius
+                    homePort.coords[0] + Math.cos(angle) * radiusVariation,
+                    homePort.coords[1] + Math.sin(angle) * radiusVariation
                 ];
-                ship.angle = 0;
+                ship.angle = Math.random() * 360;
                 ship.atBattle = false;
+                ship.journeyProgress = 0;
+                ship.currentWaypoint = 0;
+                ship.route = MARITIME_ROUTES[ship.fleet];
             });
             
             // Reset UI
@@ -1020,12 +1161,13 @@
             document.getElementById('startBattleBtn').classList.remove('audio-prompt');
             document.querySelector('[onclick="pauseBattle()"]').textContent = 'Pause';
             
-            // Clear effects
+            // Clear effects and maritime routes
             battleSvg.selectAll('.cannon-fire').remove();
             battleSvg.selectAll('.explosion').remove();
+            battleSvg.selectAll('.journey-path').remove();
             
             updateShipPositions();
-            updateBattleStatus("Ships gathering at their home ports...");
+            updateBattleStatus("Fleets anchored in home waters, awaiting orders...");
             
             // Reset map view
             view.animate({
@@ -1151,32 +1293,49 @@
             ships.forEach(ship => {
                 if (ship.sunk) return;
                 
+                // Ensure all movements stay well offshore (minimum distance from battle coordinates)
+                const minDistanceFromShore = 0.005; // Keep ships at least this far from any potential land
+                
                 if (ship.fleet === 'british') {
-                    // British ships attack in two columns
+                    // British ships attack in two columns from the west
                     const targetCoords = [
-                        BATTLE_COORDS[0] + 0.01,
-                        BATTLE_COORDS[1] + (Math.random() - 0.5) * 0.02
+                        BATTLE_COORDS[0] - 0.01, // West of battle zone
+                        BATTLE_COORDS[1] + (ship.id % 2 === 0 ? 0.008 : -0.008) // Two columns
                     ];
                     
                     const lngDiff = targetCoords[0] - ship.coords[0];
                     const latDiff = targetCoords[1] - ship.coords[1];
                     
-                    ship.coords[0] += lngDiff * 0.001 * battleSpeed;
-                    ship.coords[1] += latDiff * 0.001 * battleSpeed;
-                    ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 270;
+                    // Constrain movement to stay in deep water
+                    const newLng = ship.coords[0] + (lngDiff * 0.001 * battleSpeed);
+                    const newLat = ship.coords[1] + (latDiff * 0.001 * battleSpeed);
+                    
+                    // Ensure ships stay offshore
+                    if (newLng > -7.0 && newLat > 36.0 && newLat < 37.0) {
+                        ship.coords[0] = newLng;
+                        ship.coords[1] = newLat;
+                        ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
+                    }
                 } else {
-                    // Franco-Spanish line formation
+                    // Franco-Spanish line formation - maintain position east of battle
                     const targetCoords = [
-                        BATTLE_COORDS[0] - 0.01,
-                        BATTLE_COORDS[1] + (Math.random() - 0.5) * 0.01
+                        BATTLE_COORDS[0] + 0.008, // East of battle zone, in safe waters
+                        BATTLE_COORDS[1] + (Math.random() - 0.5) * 0.015
                     ];
                     
                     const lngDiff = targetCoords[0] - ship.coords[0];
                     const latDiff = targetCoords[1] - ship.coords[1];
                     
-                    ship.coords[0] += lngDiff * 0.0005 * battleSpeed;
-                    ship.coords[1] += latDiff * 0.0005 * battleSpeed;
-                    ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 90;
+                    // Slower, more defensive movement
+                    const newLng = ship.coords[0] + (lngDiff * 0.0003 * battleSpeed);
+                    const newLat = ship.coords[1] + (latDiff * 0.0003 * battleSpeed);
+                    
+                    // Keep Franco-Spanish fleet in safe waters off Cape Trafalgar
+                    if (newLng < -6.0 && newLng > -6.5 && newLat > 36.0 && newLat < 37.0) {
+                        ship.coords[0] = newLng;
+                        ship.coords[1] = newLat;
+                        ship.angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI) + 270;
+                    }
                 }
             });
             
